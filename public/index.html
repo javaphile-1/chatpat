@@ -6,71 +6,80 @@
 
 <style>
 
-body {
+body{
   font-family: Arial, sans-serif;
-  background: #f2f2f2;
-  margin: 0;
-  display: flex;
-  flex-direction: column;
-  height: 100vh;
+  background:#f2f2f2;
+  margin:0;
+  display:flex;
+  flex-direction:column;
+  height:100vh;
 }
 
-h2 {
-  text-align: center;
-  margin: 10px;
+h2{
+  text-align:center;
+  margin:10px;
 }
 
-#messages {
-  flex: 1;
-  overflow-y: auto;
-  padding: 10px;
+#messages{
+  flex:1;
+  overflow-y:auto;
+  padding:10px;
+  display:flex;
+  flex-direction:column;
 }
 
-.message {
-  padding: 10px;
-  margin: 6px 0;
-  border-radius: 10px;
-  max-width: 70%;
-  word-wrap: break-word;
+.message{
+  padding:10px;
+  margin:6px 0;
+  border-radius:10px;
+  max-width:70%;
+  word-wrap:break-word;
 }
 
-.myMessage {
-  background: #d1e7dd;
-  align-self: flex-end;
+.myMessage{
+  background:#d1e7dd;
+  margin-left:auto;
 }
 
-.otherMessage {
-  background: white;
-  align-self: flex-start;
+.otherMessage{
+  background:white;
+  margin-right:auto;
 }
 
-#typing {
-  font-size: 13px;
-  color: gray;
-  padding-left: 10px;
+.systemMessage{
+  text-align:center;
+  color:gray;
+  font-size:13px;
 }
 
-#inputArea {
-  display: flex;
-  padding: 10px;
-  background: white;
-  border-top: 1px solid #ddd;
+#typing{
+  font-size:13px;
+  color:gray;
+  padding-left:10px;
 }
 
-#messageInput {
-  flex: 1;
-  padding: 10px;
-  border-radius: 20px;
-  border: 1px solid #ccc;
+#inputArea{
+  display:flex;
+  padding:10px;
+  background:white;
+  border-top:1px solid #ddd;
 }
 
-#sendButton {
-  margin-left: 8px;
-  padding: 10px 16px;
-  border: none;
-  background: #0d6efd;
-  color: white;
-  border-radius: 20px;
+#messageInput{
+  flex:1;
+  padding:10px;
+  border-radius:20px;
+  border:1px solid #ccc;
+}
+
+#sendButton{
+  margin-left:8px;
+  padding:10px 16px;
+  border:none;
+  background:#0d6efd;
+  color:white;
+  border-radius:20px;
+  cursor:pointer;
 }
 
 </style>
@@ -108,44 +117,66 @@ input.addEventListener("input", () => {
   socket.emit("typing", username);
 });
 
-button.addEventListener("click", () => {
+button.addEventListener("click", sendMessage);
 
-  const message = input.value;
+input.addEventListener("keypress", function(e){
+  if(e.key === "Enter"){
+    sendMessage();
+  }
+});
+
+function sendMessage(){
+
+  const message = input.value.trim();
+
+  if(message === "") return;
 
   socket.emit("chat message", {
     user: username,
     text: message
   });
 
-  input.value = "";
-
-});
+  input.value="";
+}
 
 socket.on("typing", (name) => {
 
-  const typingDiv = document.getElementById("typing");
+  const typingDiv=document.getElementById("typing");
 
-  typingDiv.innerText = name + " is typing...";
+  typingDiv.innerText=name + " is typing...";
 
-  setTimeout(() => {
-    typingDiv.innerText = "";
-  }, 2000);
+  setTimeout(()=>{
+    typingDiv.innerText="";
+  },2000);
 
 });
 
 socket.on("chat message", (msg) => {
 
-  const messageDiv = document.createElement("div");
+  const messageDiv=document.createElement("div");
 
-  messageDiv.classList.add("message");
+  if(msg.user === "System"){
 
-  if (msg.user === username) {
-    messageDiv.classList.add("myMessage");
+    messageDiv.classList.add("systemMessage");
+    messageDiv.innerText=msg.text;
+
   } else {
-    messageDiv.classList.add("otherMessage");
-  }
 
-  messageDiv.innerText = msg.user + ": " + msg.text;
+    messageDiv.classList.add("message");
+
+    if(msg.user === username){
+      messageDiv.classList.add("myMessage");
+    } else {
+      messageDiv.classList.add("otherMessage");
+    }
+
+    const time = new Date().toLocaleTimeString([],{
+      hour:'2-digit',
+      minute:'2-digit'
+    });
+
+    messageDiv.innerText = msg.user + " • " + time + "\n" + msg.text;
+  }
 
   messages.appendChild(messageDiv);
 
