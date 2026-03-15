@@ -32,7 +32,7 @@ padding:10px;
 <h2>Simple Chat</h2>
 
 <div id="messages"></div>
-
+<div id="typing" style="color: gray; font-size: 14px;"></div>
 <input id="messageInput" placeholder="Type message here">
 <button>Send</button>
 <script src="/socket.io/socket.io.js"></script>
@@ -41,7 +41,10 @@ const socket = io();
 const username = prompt("Enter your name");
 socket.emit("user joined", username);
 const input = document.getElementById("messageInput");
-const messages = document.getElementById("messages");
+input.addEventListener("input", () => {
+  socket.emit("typing", username);
+});
+  const messages = document.getElementById("messages");
 const button = document.querySelector("button");
 
 button.addEventListener("click", () => {
@@ -55,6 +58,15 @@ button.addEventListener("click", () => {
   input.value = "";
 });
 
+  socket.on("typing", (name) => {
+  const typingDiv = document.getElementById("typing");
+  typingDiv.innerText = name + " is typing...";
+
+  setTimeout(() => {
+    typingDiv.innerText = "";
+  }, 2000);
+});
+  
 socket.on("chat message", (msg) => {
   const item = document.createElement("div");
   item.textContent = msg.user + ": " + msg.text;
