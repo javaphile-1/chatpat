@@ -1,31 +1,11 @@
 <!DOCTYPE html>
 <html>
+
 <head>
 <title>Simple Chat</title>
+
 <style>
-body{
-font-family: Arial;
-margin:40px;
-}
 
-#messages{
-border:1px solid #ccc;
-height:300px;
-overflow-y:scroll;
-padding:10px;
-margin-bottom:10px;
-}
-
-input{
-padding:10px;
-width:80%;
-}
-
-button{
-padding:10px;
-}
-
-<style id="mobile_chat_style">
 body {
   font-family: Arial, sans-serif;
   background: #f2f2f2;
@@ -33,6 +13,11 @@ body {
   display: flex;
   flex-direction: column;
   height: 100vh;
+}
+
+h2 {
+  text-align: center;
+  margin: 10px;
 }
 
 #messages {
@@ -87,9 +72,9 @@ body {
   color: white;
   border-radius: 20px;
 }
+
 </style>
-  
-</style>
+
 </head>
 
 <body>
@@ -97,46 +82,61 @@ body {
 <h2>Simple Chat</h2>
 
 <div id="messages"></div>
-<div id="typing" style="color: gray; font-size: 14px;"></div>
-<input id="messageInput" placeholder="Type message here">
-<button>Send</button>
+
+<div id="typing"></div>
+
+<div id="inputArea">
+  <input id="messageInput" placeholder="Type a message..." />
+  <button id="sendButton">Send</button>
+</div>
+
 <script src="/socket.io/socket.io.js"></script>
+
 <script>
+
 const socket = io();
+
 const username = prompt("Enter your name");
+
 socket.emit("user joined", username);
+
 const input = document.getElementById("messageInput");
+const button = document.getElementById("sendButton");
+const messages = document.getElementById("messages");
+
 input.addEventListener("input", () => {
   socket.emit("typing", username);
 });
-  const messages = document.getElementById("messages");
-const button = document.querySelector("button");
 
 button.addEventListener("click", () => {
+
   const message = input.value;
 
   socket.emit("chat message", {
-  user: username,
-  text: message
-});
+    user: username,
+    text: message
+  });
 
   input.value = "";
+
 });
 
-  socket.on("typing", (name) => {
+socket.on("typing", (name) => {
+
   const typingDiv = document.getElementById("typing");
+
   typingDiv.innerText = name + " is typing...";
 
   setTimeout(() => {
     typingDiv.innerText = "";
   }, 2000);
+
 });
-  
+
 socket.on("chat message", (msg) => {
 
-  const messages = document.getElementById("messages");
-
   const messageDiv = document.createElement("div");
+
   messageDiv.classList.add("message");
 
   if (msg.user === username) {
@@ -150,20 +150,10 @@ socket.on("chat message", (msg) => {
   messages.appendChild(messageDiv);
 
   messages.scrollTop = messages.scrollHeight;
+
 });
 
-
-  
 </script>
-
-<div id="messages"></div>
-
-<div id="typing"></div>
-
-<div id="inputArea">
-  <input id="messageInput" placeholder="Type a message..." />
-  <button id="sendButton">Send</button>
-</div>
 
 </body>
 </html>
