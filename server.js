@@ -15,6 +15,11 @@ io.on("connection", (socket) => {
     io.emit("chat message", { user: "System", text: username + " joined the chat" });
   });
 
+  // ✅ ADD THIS BLOCK
+  socket.on("typing", (username) => {
+    socket.broadcast.emit("typing", username);
+  });
+
   socket.on("chat message", (msg) => {
     io.emit("chat message", msg);
   });
