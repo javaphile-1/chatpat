@@ -4,6 +4,8 @@
 <head>
 <title>Simple Chat</title>
 
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
 <style>
 
 body{
@@ -11,29 +13,39 @@ body{
   background:#f2f2f2;
   margin:0;
   display:flex;
-  flex-direction:column;
+  justify-content:center;
+}
+
+#chatContainer{
+  width:100%;
+  max-width:700px;
   height:100vh;
+  display:flex;
+  flex-direction:column;
+  background:white;
 }
 
 h2{
   text-align:center;
-  margin:10px;
+  margin:12px;
+  font-size:22px;
 }
 
 #messages{
   flex:1;
   overflow-y:auto;
-  padding:10px;
+  padding:15px;
   display:flex;
   flex-direction:column;
+  font-size:16px;
 }
 
 .message{
-  padding:10px;
+  padding:12px;
   margin:6px 0;
-  border-radius:10px;
+  border-radius:12px;
   max-width:70%;
-  word-wrap:break-word;
+  line-height:1.4;
 }
 
 .myMessage{
@@ -42,44 +54,69 @@ h2{
 }
 
 .otherMessage{
-  background:white;
+  background:#f1f1f1;
   margin-right:auto;
 }
 
 .systemMessage{
   text-align:center;
   color:gray;
-  font-size:13px;
+  font-size:14px;
 }
 
 #typing{
-  font-size:13px;
+  font-size:14px;
   color:gray;
-  padding-left:10px;
+  padding-left:15px;
+  padding-bottom:6px;
 }
 
 #inputArea{
   display:flex;
-  padding:10px;
-  background:white;
+  padding:12px;
   border-top:1px solid #ddd;
+  background:white;
 }
 
 #messageInput{
   flex:1;
-  padding:10px;
-  border-radius:20px;
+  padding:12px;
+  border-radius:25px;
   border:1px solid #ccc;
+  font-size:16px;
 }
 
 #sendButton{
-  margin-left:8px;
-  padding:10px 16px;
+  margin-left:10px;
+  padding:12px 20px;
   border:none;
   background:#0d6efd;
   color:white;
-  border-radius:20px;
+  border-radius:25px;
+  font-size:16px;
   cursor:pointer;
+}
+
+@media (max-width:600px){
+
+h2{
+  font-size:20px;
+}
+
+#messages{
+  font-size:17px;
+}
+
+#messageInput{
+  font-size:18px;
+  padding:14px;
+}
+
+#sendButton{
+  font-size:18px;
+  padding:14px 22px;
+}
+
 }
 
 </style>
@@ -87,6 +124,8 @@ h2{
 </head>
 
 <body>
+
+<div id="chatContainer">
 
 <h2>Simple Chat</h2>
 
@@ -97,6 +136,8 @@ h2{
 <div id="inputArea">
   <input id="messageInput" placeholder="Type a message..." />
   <button id="sendButton">Send</button>
+</div>
+
 </div>
 
 <script src="/socket.io/socket.io.js"></script>
