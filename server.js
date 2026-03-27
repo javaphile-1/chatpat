@@ -33,7 +33,7 @@ io.on("connection", (socket) => {
   socket.on("chat message", (msg) => {
 
     msg.id = Date.now();
-
+msg.time = new Date();
     messages.push(msg);
 
     if (messages.length > 100) {
