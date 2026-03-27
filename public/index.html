@@ -6,24 +6,18 @@
 
 <style>
 body {
-  font-family: Arial, sans-serif;
-  background: #f2f2f2;
+  font-family: Arial;
   margin: 0;
   display: flex;
   flex-direction: column;
   height: 100vh;
 }
 
-h2 {
-  text-align: center;
-  margin: 10px;
-}
-
 #loginScreen {
   display: flex;
   flex-direction: column;
-  justify-content: center;
   align-items: center;
+  justify-content: center;
   height: 100vh;
 }
 
@@ -41,33 +35,31 @@ h2 {
 
 .message {
   padding: 10px;
-  margin: 6px 0;
+  margin: 5px;
   border-radius: 10px;
   max-width: 70%;
 }
 
 .myMessage {
-  background: #d1e7dd;
+  background: lightgreen;
   align-self: flex-end;
 }
 
 .otherMessage {
-  background: white;
-  align-self: flex-start;
+  background: lightgray;
+}
+
+.seen {
+  font-size: 10px;
+  color: gray;
 }
 
 #inputArea {
   display: flex;
-  padding: 10px;
-  background: white;
 }
 
 #messageInput {
   flex: 1;
-  padding: 10px;
-}
-
-#sendButton {
   padding: 10px;
 }
 
@@ -77,22 +69,21 @@ h2 {
 
 <body>
 
-<!-- LOGIN SCREEN -->
 <div id="loginScreen">
-  <h2>Enter Access Code</h2>
-  <input id="codeInput" placeholder="Enter code">
+  <h2>Login</h2>
+  <input id="nameInput" placeholder="Enter your name"><br><br>
+  <input id="codeInput" placeholder="Enter code"><br><br>
   <button onclick="login()">Enter</button>
-  <p id="error" style="color:red;"></p>
+  <p id="error"></p>
 </div>
 
-<!-- CHAT SCREEN -->
 <div id="chatScreen">
-  <h2>Private Chat</h2>
+  <h2>Chat</h2>
   <div id="messages"></div>
 
   <div id="inputArea">
-    <input id="messageInput" placeholder="Type message...">
-    <button id="sendButton">Send</button>
+    <input id="messageInput" placeholder="Type message">
+    <button onclick="sendMessage()">Send</button>
   </div>
 </div>
 
@@ -100,60 +91,88 @@ h2 {
 
 <script>
 
-const SECRET_CODE = "221323"; // 🔐 CHANGE THIS ANYTIME
-
-let username = "User";
+const SECRET_CODE = "8421";
+let socket;
+let username;
 
 function login() {
-  const entered = document.getElementById("codeInput").value;
+  const code = document.getElementById("codeInput").value;
+  const name = document.getElementById("nameInput").value;
 
-  if (entered === SECRET_CODE) {
-    document.getElementById("loginScreen").style.display = "none";
-    document.getElementById("chatScreen").style.display = "flex";
-
-    startChat();
-  } else {
+  if (code !== SECRET_CODE) {
     document.getElementById("error").innerText = "Wrong code";
+    return;
   }
+
+  username = name;
+
+  document.getElementById("loginScreen").style.display = "none";
+  document.getElementById("chatScreen").style.display = "flex";
+
+  startChat();
 }
 
 function startChat() {
+  socket = io();
 
-  const socket = io();
-
-  const input = document.getElementById("messageInput");
-  const button = document.getElementById("sendButton");
-  const messages = document.getElementById("messages");
+  const messagesDiv = document.getElementById("messages");
 
   socket.emit("user joined", username);
 
-  button.addEventListener("click", () => {
-    const message = input.value;
-
-    socket.emit("chat message", {
-      user: username,
-      text: message
-    });
-
-    input.value = "";
+  // Load old messages
+  socket.on("load messages", (msgs) => {
+    msgs.forEach(addMessage);
   });
 
+  // Receive new messages
   socket.on("chat message", (msg) => {
-    const messageDiv = document.createElement("div");
-    messageDiv.classList.add("message");
+    addMessage(msg);
 
-    if (msg.user === username) {
-      messageDiv.classList.add("myMessage");
-    } else {
-      messageDiv.classList.add("otherMessage");
-    }
-
-    messageDiv.innerText = msg.user + ": " + msg.text;
-
-    messages.appendChild(messageDiv);
-    messages.scrollTop = messages.scrollHeight;
+    // Send seen event
+    socket.emit("message seen", msg.id);
   });
 
+  // Show seen status
+  socket.on("message seen", (id) => {
+    const el = document.getElementById("seen-" + id);
+    if (el) {
+      el.innerText = "Seen";
+    }
+  });
+}
+
+function sendMessage() {
+  const input = document.getElementById("messageInput");
+
+  const msg = {
+    user: username,
+    text: input.value
+  };
+
+  socket.emit("chat message", msg);
+
+  input.value = "";
+}
+
+function addMessage(msg) {
+  const messagesDiv = document.getElementById("messages");
+
+  const div = document.createElement("div");
+  div.classList.add("message");
+
+  if (msg.user === username) {
+    div.classList.add("myMessage");
+  } else {
+    div.classList.add("otherMessage");
+  }
+
+  div.innerHTML = `
+    ${msg.user}: ${msg.text}
+    <div class="seen" id="seen-${msg.id}"></div>
+  `;
+
+  messagesDiv.appendChild(div);
+  messagesDiv.scrollTop = messagesDiv.scrollHeight;
 }
 
 </script>
