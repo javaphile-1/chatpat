@@ -49,9 +49,10 @@ body {
   background: lightgray;
 }
 
-.seen {
-  font-size: 10px;
+#typing {
+  font-size: 12px;
   color: gray;
+  padding-left: 10px;
 }
 
 #inputArea {
@@ -74,12 +75,13 @@ body {
   <input id="nameInput" placeholder="Enter your name"><br><br>
   <input id="codeInput" placeholder="Enter code"><br><br>
   <button onclick="login()">Enter</button>
-  <p id="error"></p>
+  <p id="error" style="color:red;"></p>
 </div>
 
 <div id="chatScreen">
   <h2>Chat</h2>
   <div id="messages"></div>
+  <div id="typing"></div>
 
   <div id="inputArea">
     <input id="messageInput" placeholder="Type message">
@@ -92,12 +94,18 @@ body {
 <script>
 
 const SECRET_CODE = "8421";
+
 let socket;
 let username;
 
 function login() {
-  const code = document.getElementById("codeInput").value;
-  const name = document.getElementById("nameInput").value;
+  const code = document.getElementById("codeInput").value.trim();
+  const name = document.getElementById("nameInput").value.trim();
+
+  if (!name) {
+    document.getElementById("error").innerText = "Enter your name";
+    return;
+  }
 
   if (code !== SECRET_CODE) {
     document.getElementById("error").innerText = "Wrong code";
@@ -113,9 +121,11 @@ function login() {
 }
 
 function startChat() {
+
   socket = io();
 
   const messagesDiv = document.getElementById("messages");
+  const input = document.getElementById("messageInput");
 
   socket.emit("user joined", username);
 
@@ -124,32 +134,42 @@ function startChat() {
     msgs.forEach(addMessage);
   });
 
-  // Receive new messages
+  // Receive message
   socket.on("chat message", (msg) => {
     addMessage(msg);
-
-    // Send seen event
     socket.emit("message seen", msg.id);
   });
 
-  // Show seen status
+  // Seen indicator
   socket.on("message seen", (id) => {
     const el = document.getElementById("seen-" + id);
-    if (el) {
-      el.innerText = "Seen";
-    }
+    if (el) el.innerText = "Seen";
+  });
+
+  // Typing indicator
+  input.addEventListener("input", () => {
+    socket.emit("typing", username);
+  });
+
+  socket.on("typing", (name) => {
+    const typingDiv = document.getElementById("typing");
+    typingDiv.innerText = name + " is typing...";
+
+    setTimeout(() => {
+      typingDiv.innerText = "";
+    }, 2000);
   });
 }
 
 function sendMessage() {
   const input = document.getElementById("messageInput");
 
-  const msg = {
+  if (!input.value.trim()) return;
+
+  socket.emit("chat message", {
     user: username,
     text: input.value
-  };
-
-  socket.emit("chat message", msg);
+  });
 
   input.value = "";
 }
@@ -168,7 +188,7 @@ function addMessage(msg) {
 
   div.innerHTML = `
     ${msg.user}: ${msg.text}
-    <div class="seen" id="seen-${msg.id}"></div>
+    <div id="seen-${msg.id}" style="font-size:10px;color:gray;"></div>
   `;
 
   messagesDiv.appendChild(div);
