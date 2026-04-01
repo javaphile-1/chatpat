@@ -18,7 +18,7 @@ try {
   messages = [];
 }
 
-let users = {}; // track online users
+let users = {}; // username -> socket.id
 
 io.on("connection", (socket) => {
 
@@ -26,18 +26,14 @@ io.on("connection", (socket) => {
 
   socket.on("user joined", (username) => {
     socket.username = username;
-    users[socket.id] = username;
+    users[username] = socket.id;
 
-    io.emit("online users", Object.values(users));
+    io.emit("online users", users);
   });
 
   socket.on("disconnect", () => {
-    delete users[socket.id];
-    io.emit("online users", Object.values(users));
-  });
-
-  socket.on("typing", (username) => {
-    socket.broadcast.emit("typing", username);
+    delete users[socket.username];
+    io.emit("online users", users);
   });
 
   socket.on("chat message", (msg) => {
@@ -55,28 +51,30 @@ io.on("connection", (socket) => {
     io.emit("chat message", msg);
   });
 
+  socket.on("typing", (username) => {
+    socket.broadcast.emit("typing", username);
+  });
+
   socket.on("message seen", (id) => {
     socket.broadcast.emit("message seen", id);
   });
 
-  // 📞 CALL SIGNALING
+  // 📞 CALL SYSTEM
   socket.on("call-user", ({ to, offer }) => {
-    socket.to(to).emit("incoming-call", {
-      from: socket.id,
+    io.to(users[to]).emit("incoming-call", {
+      from: socket.username,
       offer
     });
   });
 
   socket.on("answer-call", ({ to, answer }) => {
-    socket.to(to).emit("call-answered", answer);
+    io.to(users[to]).emit("call-answered", answer);
   });
 
   socket.on("ice-candidate", ({ to, candidate }) => {
-    socket.to(to).emit("ice-candidate", candidate);
+    io.to(users[to]).emit("ice-candidate", candidate);
   });
 
 });
 
-server.listen(3000, () => {
-  console.log("Server running...");
-});
+server.listen(3000);
