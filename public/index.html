@@ -5,96 +5,53 @@
 <title>Private Chat</title>
 
 <style>
-body {
-  font-family: Arial;
-  margin: 0;
-  display: flex;
-  flex-direction: column;
-  height: 100vh;
-}
+body { font-family: Arial; margin:0; display:flex; flex-direction:column; height:100vh;}
+#loginScreen {display:flex; flex-direction:column; align-items:center; justify-content:center; height:100vh;}
+#chatScreen {display:none; flex-direction:column; height:100vh;}
 
-#loginScreen {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  height: 100vh;
-}
+#messages {flex:1; overflow-y:auto; padding:10px;}
+.message {padding:10px; margin:5px; border-radius:10px; max-width:70%;}
+.myMessage {background:#dcf8c6; align-self:flex-end;}
+.otherMessage {background:#fff;}
 
-#chatScreen {
-  display: none;
-  flex-direction: column;
-  height: 100vh;
-}
+#inputArea {display:flex;}
+#messageInput {flex:1; padding:10px;}
 
-#messages {
-  flex: 1;
-  overflow-y: auto;
-  padding: 10px;
-}
+#typing {font-size:12px; color:gray;}
+#status {font-size:12px; color:green;}
 
-.message {
-  padding: 10px;
-  margin: 5px;
-  border-radius: 10px;
-  max-width: 70%;
-}
-
-.myMessage {
-  background: lightgreen;
-  align-self: flex-end;
-}
-
-.otherMessage {
-  background: lightgray;
-}
-
-#typing {
-  font-size: 12px;
-  color: gray;
-  padding-left: 10px;
-}
-
-#inputArea {
-  display: flex;
-  padding: 5px;
-}
-
-#messageInput {
-  flex: 1;
-  padding: 10px;
-}
-
-button {
-  padding: 10px;
-}
-
+video {width:45%; margin:5px; background:black;}
 </style>
 
 </head>
 
 <body>
 
-<!-- LOGIN SCREEN -->
 <div id="loginScreen">
-  <h2>Login</h2>
-  <input id="nameInput" placeholder="Enter your name"><br><br>
-  <input id="codeInput" placeholder="Enter code"><br><br>
-  <button onclick="login()">Enter</button>
-  <p id="error" style="color:red;"></p>
+<h2>Login</h2>
+<input id="nameInput" placeholder="Enter name"><br><br>
+<input id="codeInput" placeholder="Enter code"><br><br>
+<button onclick="login()">Enter</button>
+<p id="error"></p>
 </div>
 
-<!-- CHAT SCREEN -->
 <div id="chatScreen">
-  <h2>Private Chat</h2>
 
-  <div id="messages"></div>
-  <div id="typing"></div>
+<h3 id="status"></h3>
 
-  <div id="inputArea">
-    <input id="messageInput" placeholder="Type message">
-    <button onclick="sendMessage()">Send</button>
-  </div>
+<div id="messages"></div>
+<div id="typing"></div>
+
+<button onclick="startCall()">📞 Call</button>
+
+<video id="localVideo" autoplay muted></video>
+<video id="remoteVideo" autoplay></video>
+
+<div id="inputArea">
+<input id="messageInput" placeholder="Type message">
+<button onclick="sendMessage()">Send</button>
+</div>
+
 </div>
 
 <script src="/socket.io/socket.io.js"></script>
@@ -102,131 +59,185 @@ button {
 <script>
 
 const SECRET_CODE = "8421";
+let socket, username;
+let peer, localStream;
+let remoteSocketId;
 
-let socket;
-let username;
-
-// 🔐 LOGIN
+// LOGIN
 function login() {
-  const code = document.getElementById("codeInput").value.trim();
-  const name = document.getElementById("nameInput").value.trim();
+  const name = nameInput.value.trim();
+  const code = codeInput.value.trim();
 
-  if (!name) {
-    document.getElementById("error").innerText = "Enter your name";
-    return;
-  }
-
-  if (code !== SECRET_CODE) {
-    document.getElementById("error").innerText = "Wrong code";
-    return;
-  }
+  if (!name) return error.innerText="Enter name";
+  if (code !== SECRET_CODE) return error.innerText="Wrong code";
 
   username = name;
 
-  document.getElementById("loginScreen").style.display = "none";
-  document.getElementById("chatScreen").style.display = "flex";
+  loginScreen.style.display="none";
+  chatScreen.style.display="flex";
 
   startChat();
 }
 
-// 🚀 START CHAT
+// START CHAT
 function startChat() {
 
   socket = io();
 
-  const input = document.getElementById("messageInput");
-
   socket.emit("user joined", username);
 
-  // Load old messages
-  socket.on("load messages", (msgs) => {
-    msgs.forEach(addMessage);
-  });
+  socket.on("load messages", msgs => msgs.forEach(addMessage));
 
-  // Receive new message
-  socket.on("chat message", (msg) => {
+  socket.on("chat message", msg => {
     addMessage(msg);
     socket.emit("message seen", msg.id);
   });
 
-  // Seen indicator
-  socket.on("message seen", (id) => {
-    const el = document.getElementById("seen-" + id);
-    if (el) el.innerText = "Seen";
+  socket.on("message seen", id => {
+    let el = document.getElementById("seen-"+id);
+    if(el) el.innerText="✔✔ Seen";
   });
 
-  // Typing indicator
-  input.addEventListener("input", () => {
+  socket.on("typing", name => {
+    typing.innerText = name + " typing...";
+    setTimeout(()=>typing.innerText="",2000);
+  });
+
+  socket.on("online users", users => {
+    status.innerText = "Online: " + users.join(", ");
+  });
+
+  messageInput.addEventListener("input", () => {
     socket.emit("typing", username);
   });
 
-  socket.on("typing", (name) => {
-    const typingDiv = document.getElementById("typing");
-    typingDiv.innerText = name + " is typing...";
-
-    setTimeout(() => {
-      typingDiv.innerText = "";
-    }, 2000);
+  messageInput.addEventListener("keypress", e=>{
+    if(e.key==="Enter") sendMessage();
   });
 
-  // ✅ Enter key to send message
-  input.addEventListener("keypress", (e) => {
-    if (e.key === "Enter") {
-      sendMessage();
+  // 📞 CALL EVENTS
+  socket.on("incoming-call", async ({from, offer}) => {
+
+    remoteSocketId = from;
+
+    if(confirm("Incoming call. Accept?")) {
+
+      await startMedia();
+
+      createPeer();
+
+      await peer.setRemoteDescription(offer);
+
+      const answer = await peer.createAnswer();
+      await peer.setLocalDescription(answer);
+
+      socket.emit("answer-call", {to:from, answer});
     }
+  });
+
+  socket.on("call-answered", async (answer) => {
+    await peer.setRemoteDescription(answer);
+  });
+
+  socket.on("ice-candidate", async (candidate) => {
+    if(peer) await peer.addIceCandidate(candidate);
   });
 }
 
-// 📩 SEND MESSAGE
-function sendMessage() {
-  const input = document.getElementById("messageInput");
-
-  if (!input.value.trim()) return;
+// SEND MESSAGE
+function sendMessage(){
+  if(!messageInput.value.trim()) return;
 
   socket.emit("chat message", {
     user: username,
-    text: input.value
+    text: messageInput.value
   });
 
-  input.value = "";
+  messageInput.value="";
 }
 
-// 🧱 ADD MESSAGE TO UI
-function addMessage(msg) {
-  const messagesDiv = document.getElementById("messages");
-
-  const div = document.createElement("div");
+// ADD MESSAGE
+function addMessage(msg){
+  let div=document.createElement("div");
   div.classList.add("message");
 
-  if (msg.user === username) {
-    div.classList.add("myMessage");
-  } else {
-    div.classList.add("otherMessage");
-  }
+  if(msg.user===username) div.classList.add("myMessage");
+  else div.classList.add("otherMessage");
 
-  // 🕒 Format timestamp safely
-  let formattedTime = "";
-  if (msg.time) {
-    const date = new Date(msg.time);
-    formattedTime = date.toLocaleString("en-IN", {
-      day: "2-digit",
-      month: "short",
-      year: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-    });
+  let time="";
+  if(msg.time){
+    let d=new Date(msg.time);
+    time=d.toLocaleString();
   }
 
   div.innerHTML = `
-    <b>${msg.user}:</b> ${msg.text}
-    <div style="font-size:10px;color:gray;">
-      ${formattedTime}
-    </div>
-    <div id="seen-${msg.id}" style="font-size:10px;color:gray;"></div>
+    <b>${msg.user}</b>: ${msg.text}
+    <div>${time}</div>
+    <div id="seen-${msg.id}"></div>
   `;
 
-  messagesDiv.appendChild(div);
-  messagesDiv.scrollTop = messagesDiv.scrollHeight;
+  messages.appendChild(div);
+
+  // AUTO SCROLL
+  messages.scrollTop = messages.scrollHeight;
+}
+
+// =====================
+// 📞 WEBRTC FUNCTIONS
+// =====================
+
+async function startCall(){
+
+  await startMedia();
+
+  createPeer();
+
+  const offer = await peer.createOffer();
+  await peer.setLocalDescription(offer);
+
+  // pick first user (simple for 2 users)
+  for(let id in socket.connected){
+    if(id !== socket.id){
+      remoteSocketId = id;
+      break;
+    }
+  }
+
+  socket.emit("call-user", {
+    to: remoteSocketId,
+    offer
+  });
+}
+
+async function startMedia(){
+  localStream = await navigator.mediaDevices.getUserMedia({
+    video:true,
+    audio:true
+  });
+  localVideo.srcObject = localStream;
+}
+
+function createPeer(){
+  peer = new RTCPeerConnection({
+    iceServers:[{urls:"stun:stun.l.google.com:19302"}]
+  });
+
+  localStream.getTracks().forEach(track=>{
+    peer.addTrack(track, localStream);
+  });
+
+  peer.ontrack = e=>{
+    remoteVideo.srcObject = e.streams[0];
+  };
+
+  peer.onicecandidate = e=>{
+    if(e.candidate){
+      socket.emit("ice-candidate", {
+        to: remoteSocketId,
+        candidate:e.candidate
+      });
+    }
+  };
 }
 
 </script>
