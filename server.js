@@ -18,7 +18,7 @@ try {
   messages = [];
 }
 
-let users = {}; // username -> socketId
+let users = {}; // username -> socket.id
 
 io.on("connection", (socket) => {
 
@@ -27,7 +27,6 @@ io.on("connection", (socket) => {
   socket.on("user joined", (username) => {
     socket.username = username;
     users[username] = socket.id;
-
     io.emit("online users", Object.keys(users));
   });
 
@@ -42,6 +41,7 @@ io.on("connection", (socket) => {
 
     msg.id = Date.now();
     msg.time = new Date();
+    msg.delivered = true;
 
     messages.push(msg);
     if (messages.length > 100) messages.shift();
@@ -51,24 +51,29 @@ io.on("connection", (socket) => {
     io.emit("chat message", msg);
   });
 
-  socket.on("typing", (username) => {
-    socket.broadcast.emit("typing", username);
-  });
-
   socket.on("message seen", (id) => {
     socket.broadcast.emit("message seen", id);
   });
 
-  // CALL FLOW
-  socket.on("call-user", ({ to, offer }) => {
+  socket.on("typing", (username) => {
+    socket.broadcast.emit("typing", username);
+  });
+
+  // CALL EVENTS
+  socket.on("call-user", ({ to, offer, type }) => {
     io.to(users[to]).emit("incoming-call", {
       from: socket.username,
-      offer
+      offer,
+      type
     });
   });
 
-  socket.on("answer-call", ({ to, answer }) => {
+  socket.on("call-accepted", ({ to, answer }) => {
     io.to(users[to]).emit("call-answered", answer);
+  });
+
+  socket.on("call-rejected", ({ to }) => {
+    io.to(users[to]).emit("call-rejected");
   });
 
   socket.on("ice-candidate", ({ to, candidate }) => {
@@ -77,6 +82,4 @@ io.on("connection", (socket) => {
 
 });
 
-server.listen(3000, () => {
-  console.log("Server running...");
-});
+server.listen(3000);
