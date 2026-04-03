@@ -18,7 +18,7 @@ try {
   messages = [];
 }
 
-let users = {}; // username -> socket.id
+let users = {}; // username -> socketId
 
 io.on("connection", (socket) => {
 
@@ -28,12 +28,12 @@ io.on("connection", (socket) => {
     socket.username = username;
     users[username] = socket.id;
 
-    io.emit("online users", users);
+    io.emit("online users", Object.keys(users));
   });
 
   socket.on("disconnect", () => {
     delete users[socket.username];
-    io.emit("online users", users);
+    io.emit("online users", Object.keys(users));
   });
 
   socket.on("chat message", (msg) => {
@@ -59,7 +59,7 @@ io.on("connection", (socket) => {
     socket.broadcast.emit("message seen", id);
   });
 
-  // 📞 CALL SYSTEM
+  // CALL FLOW
   socket.on("call-user", ({ to, offer }) => {
     io.to(users[to]).emit("incoming-call", {
       from: socket.username,
@@ -77,4 +77,6 @@ io.on("connection", (socket) => {
 
 });
 
-server.listen(3000);
+server.listen(3000, () => {
+  console.log("Server running...");
+});
