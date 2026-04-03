@@ -9,20 +9,9 @@ const io = new Server(server);
 
 app.use(express.static("public"));
 
-let messages = [];
-
-try {
-  const data = fs.readFileSync("messages.json", "utf-8");
-  messages = data ? JSON.parse(data) : [];
-} catch {
-  messages = [];
-}
-
-let users = {}; // username -> socket.id
+let users = {}; // username -> socketId
 
 io.on("connection", (socket) => {
-
-  socket.emit("load messages", messages);
 
   socket.on("user joined", (username) => {
     socket.username = username;
@@ -35,49 +24,44 @@ io.on("connection", (socket) => {
     io.emit("online users", Object.keys(users));
   });
 
-  socket.on("chat message", (msg) => {
+  // =====================
+  // CALL FLOW
+  // =====================
 
-    if (!msg.text || !msg.text.trim()) return;
+  socket.on("call-user", ({ offer, type }) => {
 
-    msg.id = Date.now();
-    msg.time = new Date();
-    msg.delivered = true;
+    let otherUser = Object.keys(users).find(u => u !== socket.username);
+    if (!otherUser) return;
 
-    messages.push(msg);
-    if (messages.length > 100) messages.shift();
-
-    fs.writeFileSync("messages.json", JSON.stringify(messages, null, 2));
-
-    io.emit("chat message", msg);
-  });
-
-  socket.on("message seen", (id) => {
-    socket.broadcast.emit("message seen", id);
-  });
-
-  socket.on("typing", (username) => {
-    socket.broadcast.emit("typing", username);
-  });
-
-  // CALL EVENTS
-  socket.on("call-user", ({ to, offer, type }) => {
-    io.to(users[to]).emit("incoming-call", {
+    io.to(users[otherUser]).emit("incoming-call", {
       from: socket.username,
       offer,
       type
     });
   });
 
-  socket.on("call-accepted", ({ to, answer }) => {
-    io.to(users[to]).emit("call-answered", answer);
+  socket.on("call-accepted", ({ answer }) => {
+
+    let otherUser = Object.keys(users).find(u => u !== socket.username);
+    if (!otherUser) return;
+
+    io.to(users[otherUser]).emit("call-answered", answer);
   });
 
-  socket.on("call-rejected", ({ to }) => {
-    io.to(users[to]).emit("call-rejected");
+  socket.on("call-rejected", () => {
+
+    let otherUser = Object.keys(users).find(u => u !== socket.username);
+    if (!otherUser) return;
+
+    io.to(users[otherUser]).emit("call-rejected");
   });
 
-  socket.on("ice-candidate", ({ to, candidate }) => {
-    io.to(users[to]).emit("ice-candidate", candidate);
+  socket.on("ice-candidate", ({ candidate }) => {
+
+    let otherUser = Object.keys(users).find(u => u !== socket.username);
+    if (!otherUser) return;
+
+    io.to(users[otherUser]).emit("ice-candidate", candidate);
   });
 
 });
