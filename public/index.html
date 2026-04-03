@@ -1,85 +1,332 @@
-const express = require("express");
-const http = require("http");
-const { Server } = require("socket.io");
-const fs = require("fs");
+<!DOCTYPE html>
+<html>
+<head>
+<title>Chat</title>
 
-const app = express();
-const server = http.createServer(app);
-const io = new Server(server);
-
-app.use(express.static("public"));
-
-let messages = [];
-
-try {
-  const data = fs.readFileSync("messages.json", "utf-8");
-  messages = data ? JSON.parse(data) : [];
-} catch {
-  messages = [];
+<style>
+body {
+  margin:0;
+  font-family: Arial;
+  display:flex;
+  flex-direction:column;
+  height:100vh;
+  background:#ece5dd;
 }
 
-let users = {}; // username -> socket.id
+/* HEADER */
+#header {
+  background:#075e54;
+  color:white;
+  padding:15px;
+  font-size:18px;
+  display:flex;
+  justify-content:space-between;
+}
 
-io.on("connection", (socket) => {
+/* CALL BUTTONS */
+#callBar {
+  display:flex;
+  gap:10px;
+  padding:10px;
+}
 
-  socket.emit("load messages", messages);
+.callBtn {
+  padding:12px 16px;
+  font-size:16px;
+  border:none;
+  border-radius:20px;
+  background:#25d366;
+  color:white;
+}
 
-  socket.on("user joined", (username) => {
-    socket.username = username;
-    users[username] = socket.id;
-    io.emit("online users", Object.keys(users));
-  });
+/* CHAT */
+#messages {
+  flex:1;
+  overflow-y:auto;
+  padding:10px;
+}
 
-  socket.on("disconnect", () => {
-    delete users[socket.username];
-    io.emit("online users", Object.keys(users));
-  });
+.message {
+  padding:10px;
+  margin:6px;
+  border-radius:10px;
+  max-width:70%;
+  font-size:16px;
+}
 
-  socket.on("chat message", (msg) => {
+.my { background:#dcf8c6; margin-left:auto; }
+.other { background:white; }
 
-    if (!msg.text || !msg.text.trim()) return;
+.meta {
+  font-size:11px;
+  color:gray;
+  text-align:right;
+}
 
-    msg.id = Date.now();
-    msg.time = new Date();
-    msg.delivered = true;
+/* INPUT */
+#inputArea {
+  display:flex;
+  padding:10px;
+  background:white;
+}
 
-    messages.push(msg);
-    if (messages.length > 100) messages.shift();
+#messageInput {
+  flex:1;
+  padding:12px;
+  font-size:16px;
+  border-radius:20px;
+  border:1px solid #ccc;
+}
 
-    fs.writeFileSync("messages.json", JSON.stringify(messages, null, 2));
+button {
+  font-size:16px;
+}
 
-    io.emit("chat message", msg);
-  });
+/* VIDEO */
+#videoScreen {
+  display:none;
+  position:fixed;
+  top:0;
+  left:0;
+  width:100%;
+  height:100%;
+  background:black;
+  z-index:100;
+}
 
-  socket.on("message seen", (id) => {
-    socket.broadcast.emit("message seen", id);
-  });
+#remoteVideo {
+  width:100%;
+  height:100%;
+  object-fit:cover;
+}
 
-  socket.on("typing", (username) => {
-    socket.broadcast.emit("typing", username);
-  });
+#localVideo {
+  position:absolute;
+  width:140px;
+  height:180px;
+  bottom:100px;
+  right:10px;
+  border:2px solid white;
+}
 
-  // CALL EVENTS
-  socket.on("call-user", ({ to, offer, type }) => {
-    io.to(users[to]).emit("incoming-call", {
-      from: socket.username,
-      offer,
-      type
-    });
-  });
+#controls {
+  position:absolute;
+  bottom:20px;
+  width:100%;
+  display:flex;
+  justify-content:center;
+  gap:20px;
+}
 
-  socket.on("call-accepted", ({ to, answer }) => {
-    io.to(users[to]).emit("call-answered", answer);
-  });
+.ctrlBtn {
+  padding:15px;
+  border-radius:50%;
+  font-size:18px;
+  border:none;
+}
 
-  socket.on("call-rejected", ({ to }) => {
-    io.to(users[to]).emit("call-rejected");
-  });
+.end { background:red; color:white; }
+.mute { background:gray; color:white; }
+.cam { background:gray; color:white; }
 
-  socket.on("ice-candidate", ({ to, candidate }) => {
-    io.to(users[to]).emit("ice-candidate", candidate);
-  });
+/* INCOMING CALL POPUP */
+#incomingCall {
+  display:none;
+  position:fixed;
+  top:40%;
+  left:50%;
+  transform:translate(-50%,-50%);
+  background:white;
+  padding:20px;
+  border-radius:10px;
+  text-align:center;
+  z-index:200;
+}
+</style>
+</head>
 
+<body>
+
+<div id="header">
+  <span id="username"></span>
+  <span id="online"></span>
+</div>
+
+<div id="callBar">
+  <button class="callBtn" onclick="initiateCall('audio')">📞 Voice</button>
+  <button class="callBtn" onclick="initiateCall('video')">🎥 Video</button>
+</div>
+
+<div id="messages"></div>
+
+<div id="inputArea">
+  <input id="messageInput" placeholder="Type message">
+  <button onclick="sendMessage()">Send</button>
+</div>
+
+<!-- Incoming Call -->
+<div id="incomingCall">
+  <p id="callerText"></p>
+  <button onclick="acceptCall()">Accept</button>
+  <button onclick="rejectCall()">Reject</button>
+</div>
+
+<!-- Video -->
+<div id="videoScreen">
+  <video id="remoteVideo" autoplay></video>
+  <video id="localVideo" autoplay muted></video>
+
+  <div id="controls">
+    <button class="ctrlBtn mute" onclick="toggleMute()">🔇</button>
+    <button class="ctrlBtn cam" onclick="toggleCamera()">🎥</button>
+    <button class="ctrlBtn end" onclick="endCall()">🔴</button>
+  </div>
+</div>
+
+<script src="/socket.io/socket.io.js"></script>
+
+<script>
+
+let socket = io();
+let username = prompt("Enter name");
+document.getElementById("username").innerText = username;
+
+socket.emit("user joined", username);
+
+let peer, localStream, currentUser, callType;
+
+/* CHAT */
+socket.on("chat message", msg => {
+  addMessage(msg);
+  socket.emit("message seen", msg.id);
 });
 
-server.listen(3000);
+socket.on("message seen", id=>{
+  let el=document.getElementById("tick-"+id);
+  if(el) el.innerText="✔✔";
+});
+
+function sendMessage(){
+  let text=messageInput.value;
+  if(!text) return;
+
+  socket.emit("chat message",{user:username,text});
+  messageInput.value="";
+}
+
+messageInput.addEventListener("keypress",e=>{
+  if(e.key==="Enter") sendMessage();
+});
+
+function addMessage(msg){
+  let div=document.createElement("div");
+  div.className="message "+(msg.user===username?"my":"other");
+
+  let time=new Date(msg.time).toLocaleString();
+
+  div.innerHTML = `
+    ${msg.user}: ${msg.text}
+    <div class="meta">
+      ${time} <span id="tick-${msg.id}">${msg.user===username?"✔":""}</span>
+    </div>
+  `;
+
+  messages.appendChild(div);
+  messages.scrollTop=messages.scrollHeight;
+}
+
+/* ONLINE */
+socket.on("online users", users=>{
+  online.innerText="Online: "+users.join(",");
+});
+
+/* CALL FLOW */
+function initiateCall(type){
+  currentUser = prompt("Enter username");
+  callType = type;
+  socket.emit("call-user",{to:currentUser,type});
+}
+
+socket.on("incoming-call", data=>{
+  currentUser=data.from;
+  callType=data.type;
+  callerText.innerText = data.from + " calling ("+callType+")";
+  incomingCall.style.display="block";
+});
+
+function acceptCall(){
+  incomingCall.style.display="none";
+  startCall(true);
+}
+
+function rejectCall(){
+  socket.emit("call-rejected",{to:currentUser});
+  incomingCall.style.display="none";
+}
+
+socket.on("call-rejected",()=>{
+  alert("Call rejected");
+});
+
+async function startCall(isAnswer=false){
+
+  if(callType==="video"){
+    localStream = await navigator.mediaDevices.getUserMedia({video:true,audio:true});
+  } else {
+    localStream = await navigator.mediaDevices.getUserMedia({audio:true});
+  }
+
+  createPeer();
+
+  localStream.getTracks().forEach(t=>peer.addTrack(t,localStream));
+
+  if(!isAnswer){
+    let offer=await peer.createOffer();
+    await peer.setLocalDescription(offer);
+    socket.emit("call-user",{to:currentUser,offer,type:callType});
+  }
+
+  videoScreen.style.display="block";
+}
+
+function createPeer(){
+  peer=new RTCPeerConnection({
+    iceServers:[{urls:"stun:stun.l.google.com:19302"}]
+  });
+
+  peer.ontrack=e=>{
+    remoteVideo.srcObject=e.streams[0];
+  };
+
+  peer.onicecandidate=e=>{
+    if(e.candidate){
+      socket.emit("ice-candidate",{to:currentUser,candidate:e.candidate});
+    }
+  };
+}
+
+/* CONTROLS */
+function endCall(){
+  if(peer) peer.close();
+  if(localStream){
+    localStream.getTracks().forEach(t=>t.stop());
+  }
+  videoScreen.style.display="none";
+}
+
+function toggleMute(){
+  localStream.getAudioTracks()[0].enabled =
+  !localStream.getAudioTracks()[0].enabled;
+}
+
+function toggleCamera(){
+  if(localStream.getVideoTracks()[0]){
+    localStream.getVideoTracks()[0].enabled =
+    !localStream.getVideoTracks()[0].enabled;
+  }
+}
+
+</script>
+
+</body>
+</html>
