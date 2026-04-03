@@ -1,291 +1,85 @@
-<!DOCTYPE html>
-<html>
-<head>
-<title>Chat</title>
+const express = require("express");
+const http = require("http");
+const { Server } = require("socket.io");
+const fs = require("fs");
 
-<style>
-body {
-  margin:0;
-  font-family: Arial;
-  display:flex;
-  flex-direction:column;
-  height:100vh;
-  background:#ece5dd;
+const app = express();
+const server = http.createServer(app);
+const io = new Server(server);
+
+app.use(express.static("public"));
+
+let messages = [];
+
+try {
+  const data = fs.readFileSync("messages.json", "utf-8");
+  messages = data ? JSON.parse(data) : [];
+} catch {
+  messages = [];
 }
 
-/* HEADER */
-#header {
-  background:#075e54;
-  color:white;
-  padding:10px;
-  display:flex;
-  justify-content:space-between;
-}
+let users = {}; // username -> socket.id
 
-/* CHAT */
-#messages {
-  flex:1;
-  overflow-y:auto;
-  padding:10px;
-}
+io.on("connection", (socket) => {
 
-.message {
-  padding:8px;
-  margin:5px;
-  border-radius:10px;
-  max-width:70%;
-}
+  socket.emit("load messages", messages);
 
-.my { background:#dcf8c6; margin-left:auto; }
-.other { background:white; }
-
-/* INPUT */
-#inputArea {
-  display:flex;
-  padding:10px;
-  background:white;
-}
-
-#messageInput {
-  flex:1;
-  padding:10px;
-  border-radius:20px;
-  border:1px solid #ccc;
-}
-
-button {
-  margin-left:5px;
-}
-
-/* CALL BUTTONS */
-#callBar {
-  display:flex;
-  gap:5px;
-  padding:5px;
-}
-
-/* VIDEO FULLSCREEN */
-#videoScreen {
-  display:none;
-  position:fixed;
-  top:0;
-  left:0;
-  width:100%;
-  height:100%;
-  background:black;
-  z-index:100;
-}
-
-#remoteVideo {
-  width:100%;
-  height:100%;
-  object-fit:cover;
-}
-
-#localVideo {
-  position:absolute;
-  width:120px;
-  height:160px;
-  bottom:100px;
-  right:10px;
-  border:2px solid white;
-}
-
-/* CONTROLS */
-#controls {
-  position:absolute;
-  bottom:20px;
-  width:100%;
-  display:flex;
-  justify-content:center;
-  gap:15px;
-}
-
-.ctrlBtn {
-  padding:15px;
-  border-radius:50%;
-  border:none;
-  font-size:18px;
-}
-
-.end { background:red; color:white; }
-.mute { background:gray; color:white; }
-.cam { background:gray; color:white; }
-
-</style>
-</head>
-
-<body>
-
-<div id="header">
-  <span id="username"></span>
-  <span id="online"></span>
-</div>
-
-<div id="callBar">
-  <button onclick="startCall()">📞</button>
-</div>
-
-<div id="messages"></div>
-
-<div id="inputArea">
-  <input id="messageInput">
-  <button onclick="sendMessage()">Send</button>
-</div>
-
-<!-- VIDEO -->
-<div id="videoScreen">
-  <video id="remoteVideo" autoplay></video>
-  <video id="localVideo" autoplay muted></video>
-
-  <div id="controls">
-    <button class="ctrlBtn mute" onclick="toggleMute()">🔇</button>
-    <button class="ctrlBtn cam" onclick="toggleCamera()">🎥</button>
-    <button class="ctrlBtn end" onclick="endCall()">🔴</button>
-  </div>
-</div>
-
-<script src="/socket.io/socket.io.js"></script>
-
-<script>
-
-let socket = io();
-let username = prompt("Enter name");
-document.getElementById("username").innerText = username;
-
-socket.emit("user joined", username);
-
-let peer, localStream, currentUser;
-let isMuted = false;
-let cameraOff = false;
-
-/* CHAT */
-
-socket.on("chat message", msg => {
-  addMessage(msg);
-});
-
-function sendMessage(){
-  let text = messageInput.value;
-  if(!text) return;
-
-  socket.emit("chat message",{user:username,text:text});
-  messageInput.value="";
-}
-
-function addMessage(msg){
-  let div=document.createElement("div");
-  div.className="message " + (msg.user===username?"my":"other");
-
-  div.innerText = msg.user + ": " + msg.text;
-
-  messages.appendChild(div);
-  messages.scrollTop = messages.scrollHeight;
-}
-
-/* ONLINE */
-socket.on("online users", users=>{
-  document.getElementById("online").innerText = "Online: " + users.join(",");
-});
-
-/* CALL */
-
-async function startCall(){
-  currentUser = prompt("Enter username to call");
-  if(!currentUser) return;
-
-  await startMedia();
-  createPeer();
-
-  const offer = await peer.createOffer();
-  await peer.setLocalDescription(offer);
-
-  socket.emit("call-user",{to:currentUser, offer});
-}
-
-socket.on("incoming-call", async ({from, offer})=>{
-  currentUser = from;
-
-  if(confirm(from + " calling. Accept?")){
-    await startMedia();
-    createPeer();
-
-    await peer.setRemoteDescription(offer);
-
-    const answer = await peer.createAnswer();
-    await peer.setLocalDescription(answer);
-
-    socket.emit("answer-call",{to:from, answer});
-
-    showVideo();
-  }
-});
-
-socket.on("call-answered", async answer=>{
-  await peer.setRemoteDescription(answer);
-  showVideo();
-});
-
-socket.on("ice-candidate", async candidate=>{
-  if(peer) await peer.addIceCandidate(candidate);
-});
-
-async function startMedia(){
-  localStream = await navigator.mediaDevices.getUserMedia({
-    video:true,
-    audio:true
-  });
-  localVideo.srcObject = localStream;
-}
-
-function createPeer(){
-  peer = new RTCPeerConnection({
-    iceServers:[{urls:"stun:stun.l.google.com:19302"}]
+  socket.on("user joined", (username) => {
+    socket.username = username;
+    users[username] = socket.id;
+    io.emit("online users", Object.keys(users));
   });
 
-  localStream.getTracks().forEach(track=>{
-    peer.addTrack(track, localStream);
+  socket.on("disconnect", () => {
+    delete users[socket.username];
+    io.emit("online users", Object.keys(users));
   });
 
-  peer.ontrack = e=>{
-    remoteVideo.srcObject = e.streams[0];
-  };
+  socket.on("chat message", (msg) => {
 
-  peer.onicecandidate = e=>{
-    if(e.candidate){
-      socket.emit("ice-candidate",{
-        to:currentUser,
-        candidate:e.candidate
-      });
-    }
-  };
-}
+    if (!msg.text || !msg.text.trim()) return;
 
-function showVideo(){
-  videoScreen.style.display="block";
-}
+    msg.id = Date.now();
+    msg.time = new Date();
+    msg.delivered = true;
 
-/* CONTROLS */
+    messages.push(msg);
+    if (messages.length > 100) messages.shift();
 
-function endCall(){
-  if(peer) peer.close();
-  if(localStream){
-    localStream.getTracks().forEach(t=>t.stop());
-  }
-  videoScreen.style.display="none";
-}
+    fs.writeFileSync("messages.json", JSON.stringify(messages, null, 2));
 
-function toggleMute(){
-  isMuted = !isMuted;
-  localStream.getAudioTracks()[0].enabled = !isMuted;
-}
+    io.emit("chat message", msg);
+  });
 
-function toggleCamera(){
-  cameraOff = !cameraOff;
-  localStream.getVideoTracks()[0].enabled = !cameraOff;
-}
+  socket.on("message seen", (id) => {
+    socket.broadcast.emit("message seen", id);
+  });
 
-</script>
+  socket.on("typing", (username) => {
+    socket.broadcast.emit("typing", username);
+  });
 
-</body>
-</html>
+  // CALL EVENTS
+  socket.on("call-user", ({ to, offer, type }) => {
+    io.to(users[to]).emit("incoming-call", {
+      from: socket.username,
+      offer,
+      type
+    });
+  });
+
+  socket.on("call-accepted", ({ to, answer }) => {
+    io.to(users[to]).emit("call-answered", answer);
+  });
+
+  socket.on("call-rejected", ({ to }) => {
+    io.to(users[to]).emit("call-rejected");
+  });
+
+  socket.on("ice-candidate", ({ to, candidate }) => {
+    io.to(users[to]).emit("ice-candidate", candidate);
+  });
+
+});
+
+server.listen(3000);
