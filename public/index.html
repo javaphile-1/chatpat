@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-<title>Chat</title>
+<title>Private Chat</title>
 
 <style>
 body {
@@ -13,12 +13,17 @@ body {
 }
 
 /* LOGIN */
-#login {
+#loginScreen {
   display:flex;
   flex-direction:column;
   justify-content:center;
   align-items:center;
   height:100vh;
+}
+
+input {
+  padding:14px;
+  font-size:18px;
 }
 
 /* CHAT */
@@ -32,8 +37,8 @@ body {
 #header {
   background:#075e54;
   color:white;
-  padding:16px;
-  font-size:20px;
+  padding:15px;
+  font-size:18px;
   display:flex;
   justify-content:space-between;
 }
@@ -48,6 +53,13 @@ body {
 button {
   font-size:18px;
   padding:12px;
+}
+
+/* MESSAGES */
+#messages {
+  flex:1;
+  overflow-y:auto;
+  padding:10px;
 }
 
 /* INPUT */
@@ -71,11 +83,13 @@ button {
   background:black;
   top:0;
   left:0;
+  z-index:100;
 }
 
 #remoteVideo {
   width:100%;
   height:100%;
+  object-fit:cover;
 }
 
 #localVideo {
@@ -84,6 +98,7 @@ button {
   height:200px;
   bottom:120px;
   right:10px;
+  border:2px solid white;
 }
 
 /* CALL POPUP */
@@ -96,6 +111,8 @@ button {
   background:white;
   padding:20px;
   font-size:18px;
+  border-radius:10px;
+  z-index:200;
 }
 </style>
 
@@ -103,33 +120,31 @@ button {
 
 <body>
 
-<div id="loginScreen" style="display:flex;flex-direction:column;justify-content:center;align-items:center;height:100vh;">
-
+<!-- LOGIN -->
+<div id="loginScreen">
   <h2>Enter</h2>
 
   <input 
-    id="codeInput" 
+    id="codeInput"
     type="password"
     placeholder="Input code"
     autocomplete="off"
     autocorrect="off"
     autocapitalize="off"
     spellcheck="false"
-    style="padding:14px;font-size:18px;width:200px;text-align:center;"
   >
 
   <br><br>
 
-  <button onclick="login()" style="padding:12px 20px;font-size:18px;">
-    Enter
-  </button>
-
+  <button onclick="login()">Enter</button>
 </div>
 
+<!-- CHAT -->
 <div id="chat">
 
 <div id="header">
   <span id="username"></span>
+  <span id="status"></span>
 </div>
 
 <div id="callBar">
@@ -137,19 +152,23 @@ button {
   <button onclick="startCall('video')">🎥 Video</button>
 </div>
 
+<div id="messages"></div>
+
 <div id="inputArea">
-  <input id="messageInput">
+  <input id="messageInput" placeholder="Type message">
   <button onclick="sendMessage()">Send</button>
 </div>
 
 </div>
 
+<!-- INCOMING CALL -->
 <div id="incomingCall">
   <p id="callerText"></p>
   <button onclick="acceptCall()">Accept</button>
   <button onclick="rejectCall()">Reject</button>
 </div>
 
+<!-- VIDEO -->
 <div id="videoScreen">
   <video id="remoteVideo" autoplay></video>
   <video id="localVideo" autoplay muted></video>
@@ -160,45 +179,123 @@ button {
 
 <script>
 
-const SECRET_CODE="8421";
+const SECRET_CODES = {
+  "2213": "Tumaji",
+  "1323": "Rani"
+};
 
-let socket = io();
+let socket;
 let username;
 let peer, localStream;
 let callType;
 let incomingOffer;
 
-// LOGIN
+/* LOGIN */
 function login(){
 
   const code = document.getElementById("codeInput").value.trim();
 
-  // NO validation message, silent check
-  if(code === "2213"){
-    username = "Tumaji";
-  }
-  else if(code === "1323"){
-    username = "Rani";
-  }
-  else{
-    return; // do nothing
-  }
+  if(!SECRET_CODES[code]) return;
 
-  // Initialize socket AFTER login
+  username = SECRET_CODES[code];
+
   socket = io();
 
-  document.getElementById("loginScreen").style.display = "none";
-  document.getElementById("chat").style.display = "flex";
+  document.getElementById("loginScreen").style.display="none";
+  document.getElementById("chat").style.display="flex";
 
-  document.getElementById("username").innerText = username;
+  document.getElementById("username").innerText=username;
 
   socket.emit("user joined", username);
+
+  initSocketEvents();
 }
 
-// CALL START
+/* SOCKET EVENTS */
+function initSocketEvents(){
+
+  socket.on("chat message", msg=>{
+    addMessage(msg);
+    socket.emit("message seen", msg.id);
+  });
+
+  socket.on("message seen", id=>{
+    let el=document.getElementById("tick-"+id);
+    if(el) el.innerText="✔✔";
+  });
+
+  socket.on("online users", users=>{
+    let other = users.find(u=>u!==username);
+    status.innerText = other ? other+" ● Online" : "Offline";
+  });
+
+  socket.on("incoming-call", data=>{
+    callType = data.type;
+    incomingOffer = data.offer;
+
+    callerText.innerText = data.from+" calling";
+    incomingCall.style.display="block";
+  });
+
+  socket.on("call-answered", async answer=>{
+    await peer.setRemoteDescription(answer);
+  });
+
+  socket.on("call-rejected", ()=>{
+    alert("Call rejected");
+  });
+
+  socket.on("ice-candidate", async candidate=>{
+    if(peer) await peer.addIceCandidate(candidate);
+  });
+}
+
+/* CHAT */
+function sendMessage(){
+  let text = messageInput.value.trim();
+  if(!text) return;
+
+  socket.emit("chat message",{user:username,text});
+  messageInput.value="";
+}
+
+messageInput.addEventListener("keypress",e=>{
+  if(e.key==="Enter") sendMessage();
+});
+
+function addMessage(msg){
+
+  let div=document.createElement("div");
+
+  div.style.padding="10px";
+  div.style.margin="5px";
+  div.style.borderRadius="10px";
+  div.style.maxWidth="70%";
+
+  if(msg.user===username){
+    div.style.background="#dcf8c6";
+    div.style.marginLeft="auto";
+  } else {
+    div.style.background="white";
+  }
+
+  let time=new Date(msg.time).toLocaleString();
+
+  div.innerHTML = `
+    ${msg.text}
+    <div style="font-size:12px;color:gray;text-align:right;">
+      ${time} <span id="tick-${msg.id}">${msg.user===username?"✔":""}</span>
+    </div>
+  `;
+
+  messages.appendChild(div);
+  messages.scrollTop = messages.scrollHeight;
+}
+
+/* CALL */
 async function startCall(type){
 
-  callType=type;
+  callType = type;
 
   if(type==="video"){
     localStream = await navigator.mediaDevices.getUserMedia({video:true,audio:true});
@@ -210,7 +307,7 @@ async function startCall(type){
 
   localStream.getTracks().forEach(t=>peer.addTrack(t,localStream));
 
-  let offer=await peer.createOffer();
+  let offer = await peer.createOffer();
   await peer.setLocalDescription(offer);
 
   socket.emit("call-user",{offer,type});
@@ -218,18 +315,12 @@ async function startCall(type){
   showVideo();
 }
 
-// INCOMING CALL
-socket.on("incoming-call", data=>{
-  callType=data.type;
-  incomingOffer=data.offer;
-
-  callerText.innerText=data.from+" calling";
-  incomingCall.style.display="block";
-});
-
-async function acceptCall(){
-
+function acceptCall(){
   incomingCall.style.display="none";
+  startAnswer();
+}
+
+async function startAnswer(){
 
   if(callType==="video"){
     localStream = await navigator.mediaDevices.getUserMedia({video:true,audio:true});
@@ -243,7 +334,7 @@ async function acceptCall(){
 
   await peer.setRemoteDescription(incomingOffer);
 
-  let answer=await peer.createAnswer();
+  let answer = await peer.createAnswer();
   await peer.setLocalDescription(answer);
 
   socket.emit("call-accepted",{answer});
@@ -256,16 +347,6 @@ function rejectCall(){
   socket.emit("call-rejected");
 }
 
-// CALL EVENTS
-socket.on("call-answered", async answer=>{
-  await peer.setRemoteDescription(answer);
-});
-
-socket.on("call-rejected", ()=>{
-  alert("Call rejected");
-});
-
-// PEER
 function createPeer(){
   peer=new RTCPeerConnection({
     iceServers:[{urls:"stun:stun.l.google.com:19302"}]
@@ -282,7 +363,6 @@ function createPeer(){
   };
 }
 
-// VIDEO UI
 function showVideo(){
   videoScreen.style.display="block";
   if(localStream) localVideo.srcObject=localStream;
