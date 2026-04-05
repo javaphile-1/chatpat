@@ -103,11 +103,27 @@ button {
 
 <body>
 
-<div id="login">
-  <h2>Login</h2>
-  <input id="nameInput" placeholder="Name"><br><br>
-  <input id="codeInput" placeholder="Code"><br><br>
-  <button onclick="login()">Enter</button>
+<div id="loginScreen" style="display:flex;flex-direction:column;justify-content:center;align-items:center;height:100vh;">
+
+  <h2>Enter</h2>
+
+  <input 
+    id="codeInput" 
+    type="password"
+    placeholder="Input code"
+    autocomplete="off"
+    autocorrect="off"
+    autocapitalize="off"
+    spellcheck="false"
+    style="padding:14px;font-size:18px;width:200px;text-align:center;"
+  >
+
+  <br><br>
+
+  <button onclick="login()" style="padding:12px 20px;font-size:18px;">
+    Enter
+  </button>
+
 </div>
 
 <div id="chat">
@@ -154,15 +170,27 @@ let incomingOffer;
 
 // LOGIN
 function login(){
-  if(codeInput.value!==SECRET_CODE) return alert("Wrong code");
-  if(!nameInput.value) return alert("Enter name");
 
-  username=nameInput.value;
+  const code = document.getElementById("codeInput").value.trim();
 
-  login.style.display="none";
-  chat.style.display="flex";
+  // NO validation message, silent check
+  if(code === "2213"){
+    username = "Tumaji";
+  }
+  else if(code === "1323"){
+    username = "Rani";
+  }
+  else{
+    return; // do nothing
+  }
 
-  document.getElementById("username").innerText=username;
+  // Initialize socket AFTER login
+  socket = io();
+
+  document.getElementById("loginScreen").style.display = "none";
+  document.getElementById("chat").style.display = "flex";
+
+  document.getElementById("username").innerText = username;
 
   socket.emit("user joined", username);
 }
