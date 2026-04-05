@@ -181,6 +181,36 @@ button {
   }
 }
 
+  /* CALL CONTROLS */
+#callControls {
+  position:absolute;
+  bottom:20px;
+  width:100%;
+  display:flex;
+  justify-content:center;
+  gap:20px;
+}
+
+/* BUTTON STYLE */
+.controlBtn {
+  background:rgba(255,255,255,0.2);
+  border:none;
+  border-radius:50%;
+  padding:15px;
+  font-size:20px;
+  color:white;
+}
+
+/* END CALL BUTTON */
+.endBtn {
+  background:red;
+  border:none;
+  border-radius:50%;
+  padding:18px;
+  font-size:22px;
+  color:white;
+}
+  
 </style>
 
 </head>
@@ -239,7 +269,12 @@ button {
 <div id="videoScreen">
   <video id="remoteVideo" autoplay></video>
   <video id="localVideo" autoplay muted></video>
-  <button onclick="endCall()">End</button>
+
+  <div id="callControls">
+    <button class="controlBtn" onclick="toggleMute()">🔇</button>
+    <button class="controlBtn" onclick="toggleCamera()">🎥</button>
+    <button class="endBtn" onclick="endCall()">🔴</button>
+  </div>
 </div>
 
 <script src="/socket.io/socket.io.js"></script>
