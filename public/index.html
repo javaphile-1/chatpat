@@ -331,13 +331,14 @@ function initSocketEvents(){
     status.innerText = other ? other+" ● Online" : "Offline";
   });
 
-  socket.on("incoming-call", data=>{
-    callType = data.type;
-    incomingOffer = data.offer;
+ socket.on("incoming-call", data=>{
+  currentUser = data.from;
+  callType = data.type;
+  incomingOffer = data.offer;
 
-    callerText.innerText = data.from+" calling";
-    incomingCall.style.display="block";
-  });
+  callerText.innerText = data.from + " calling";
+  incomingCall.style.display="block";
+});
 
   socket.on("call-answered", async answer=>{
     await peer.setRemoteDescription(answer);
@@ -347,10 +348,12 @@ function initSocketEvents(){
     alert("Call rejected");
   });
 
-  socket.on("ice-candidate", async candidate=>{
-    if(peer) await peer.addIceCandidate(candidate);
-  });
-}
+ socket.on("ice-candidate", async candidate=>{
+  if(peer){
+    await peer.addIceCandidate(candidate);
+  }
+});
+
 
 /* CHAT */
 function sendMessage(){
@@ -399,6 +402,13 @@ async function startCall(type){
 
   callType = type;
 
+  // Find other user automatically
+  socket.emit("get-users");
+
+  socket.once("online users", users => {
+    currentUser = users.find(u => u !== username);
+  });
+
   if(type==="video"){
     localStream = await navigator.mediaDevices.getUserMedia({video:true,audio:true});
   } else {
@@ -412,14 +422,33 @@ async function startCall(type){
   let offer = await peer.createOffer();
   await peer.setLocalDescription(offer);
 
-  socket.emit("call-user",{offer,type});
+  socket.emit("call-user",{to:currentUser, offer, type});
 
   showVideo();
 }
 
-function acceptCall(){
+async function acceptCall(){
+
   incomingCall.style.display="none";
-  startAnswer();
+
+  if(callType==="video"){
+    localStream = await navigator.mediaDevices.getUserMedia({video:true,audio:true});
+  } else {
+    localStream = await navigator.mediaDevices.getUserMedia({audio:true});
+  }
+
+  createPeer();
+
+  localStream.getTracks().forEach(t=>peer.addTrack(t,localStream));
+
+  await peer.setRemoteDescription(incomingOffer);
+
+  let answer = await peer.createAnswer();
+  await peer.setLocalDescription(answer);
+
+  socket.emit("call-accepted",{to:currentUser, answer});
+
+  showVideo();
 }
 
 async function startAnswer(){
@@ -477,11 +506,13 @@ function createPeer(){
   };
 
   peer.onicecandidate = e=>{
-    if(e.candidate){
-      socket.emit("ice-candidate",{candidate:e.candidate});
-    }
-  };
-}
+  if(e.candidate){
+    socket.emit("ice-candidate",{
+      to: currentUser,
+      candidate: e.candidate
+    });
+  }
+};
   
 
 function showVideo(){
