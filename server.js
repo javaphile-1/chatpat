@@ -53,54 +53,34 @@ io.on("connection", (socket) => {
   // CALL FLOW
   // ======================
 
-  // CALL INITIATE
-  socket.on("call-user", ({ offer, type }) => {
-
-    let otherUser = Object.keys(users).find(u => u !== socket.username);
-    if (!otherUser) return;
-
-    io.to(users[otherUser]).emit("incoming-call", {
-      from: socket.username,
-      offer,
-      type
-    });
+// CALL INITIATE
+socket.on("call-user", ({ to, offer, type }) => {
+  io.to(users[to]).emit("incoming-call", {
+    from: socket.username,
+    offer,
+    type
   });
+});
 
-  // CALL ACCEPTED
-  socket.on("call-accepted", ({ answer }) => {
+// CALL ACCEPTED
+socket.on("call-accepted", ({ to, answer }) => {
+  io.to(users[to]).emit("call-answered", answer);
+});
 
-    let otherUser = Object.keys(users).find(u => u !== socket.username);
-    if (!otherUser) return;
+// CALL REJECTED
+socket.on("call-rejected", ({ to }) => {
+  io.to(users[to]).emit("call-rejected");
+});
 
-    io.to(users[otherUser]).emit("call-answered", answer);
-  });
+// ICE CANDIDATES (FIXED)
+socket.on("ice-candidate", ({ to, candidate }) => {
+  io.to(users[to]).emit("ice-candidate", candidate);
+});
 
-  // CALL REJECTED
-  socket.on("call-rejected", () => {
-
-    let otherUser = Object.keys(users).find(u => u !== socket.username);
-    if (!otherUser) return;
-
-    io.to(users[otherUser]).emit("call-rejected");
-  });
-
-  // ICE CANDIDATES
-  socket.on("ice-candidate", ({ candidate }) => {
-
-    let otherUser = Object.keys(users).find(u => u !== socket.username);
-    if (!otherUser) return;
-
-    io.to(users[otherUser]).emit("ice-candidate", candidate);
-  });
-
-  // CALL ENDED (VERY IMPORTANT)
-  socket.on("call-ended", () => {
-
-    let otherUser = Object.keys(users).find(u => u !== socket.username);
-    if (!otherUser) return;
-
-    io.to(users[otherUser]).emit("call-ended");
-  });
+// CALL ENDED
+socket.on("call-ended", ({ to }) => {
+  io.to(users[to]).emit("call-ended");
+});
 
 });
 
