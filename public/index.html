@@ -450,20 +450,39 @@ function rejectCall(){
 }
 
 function createPeer(){
-  peer=new RTCPeerConnection({
-    iceServers:[{urls:"stun:stun.l.google.com:19302"}]
+
+  peer = new RTCPeerConnection({
+    iceServers: [
+
+      // STUN (existing)
+      { urls: "stun:stun.l.google.com:19302" },
+
+      // ✅ FREE TURN SERVER
+      {
+        urls: "turn:openrelay.metered.ca:80",
+        username: "openrelayproject",
+        credential: "openrelayproject"
+      },
+      {
+        urls: "turn:openrelay.metered.ca:443",
+        username: "openrelayproject",
+        credential: "openrelayproject"
+      }
+
+    ]
   });
 
-  peer.ontrack=e=>{
-    remoteVideo.srcObject=e.streams[0];
+  peer.ontrack = e=>{
+    remoteVideo.srcObject = e.streams[0];
   };
 
-  peer.onicecandidate=e=>{
+  peer.onicecandidate = e=>{
     if(e.candidate){
       socket.emit("ice-candidate",{candidate:e.candidate});
     }
   };
 }
+  
 
 function showVideo(){
   videoScreen.style.display="block";
