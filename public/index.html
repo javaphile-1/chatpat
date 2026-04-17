@@ -349,6 +349,10 @@ function initSocketEvents(){
     alert("Call rejected");
   });
 
+  socket.on("call-ended", () => {
+  endCall();
+});
+  
  socket.on("ice-candidate", async candidate=>{
   if(peer){
     await peer.addIceCandidate(candidate);
