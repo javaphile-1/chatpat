@@ -291,7 +291,8 @@ let username;
 let peer, localStream;
 let callType;
 let incomingOffer;
-
+let currentUser = null;
+  
 /* LOGIN */
 function login(){
 
@@ -521,11 +522,33 @@ function showVideo(){
 }
 
 function endCall(){
-  if(peer) peer.close();
-  if(localStream){
-    localStream.getTracks().forEach(t=>t.stop());
+
+  // ✅ notify other user
+  if(socket && currentUser){
+    socket.emit("call-ended", { to: currentUser });
   }
-  videoScreen.style.display="none";
+
+  // Close connection
+  if (peer) {
+    peer.close();
+    peer = null;
+  }
+
+  // Stop camera + mic
+  if (localStream) {
+    localStream.getTracks().forEach(track => track.stop());
+    localStream = null;
+  }
+
+  // Clear video
+  remoteVideo.srcObject = null;
+  localVideo.srcObject = null;
+
+  // Hide video screen
+  document.getElementById("videoScreen").style.display = "none";
+
+  // Show chat again
+  document.getElementById("chat").style.display = "flex";
 }
 
 </script>
