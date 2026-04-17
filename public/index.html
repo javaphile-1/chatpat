@@ -348,9 +348,9 @@ socket.on("online users", users=>{
     document.getElementById("incomingCall").style.display="block";
   });
 
-  socket.on("call-answered", async answer=>{
-    await peer.setRemoteDescription(answer);
-  });
+socket.on("call-answered", async answer=>{
+  await peer.setRemoteDescription(new RTCSessionDescription(answer));
+});
 
   socket.on("call-rejected", ()=>{
     alert("Call rejected");
@@ -452,7 +452,7 @@ async function acceptCall(){
 
   localStream.getTracks().forEach(t=>peer.addTrack(t,localStream));
 
-  await peer.setRemoteDescription(incomingOffer);
+  await peer.setRemoteDescription(new RTCSessionDescription(incomingOffer));
 
   let answer = await peer.createAnswer();
   await peer.setLocalDescription(answer);
@@ -493,9 +493,11 @@ function createPeer(){
 
 function showVideo(){
   videoScreen.style.display="block";
-  if(localStream) localVideo.srcObject=localStream;
-}
 
+  if(localStream){
+    localVideo.srcObject = localStream;  // ✅ THIS IS REQUIRED
+  }
+}
 function endCall(){
 
   if(socket && currentUser){
