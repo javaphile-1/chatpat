@@ -289,20 +289,11 @@ let peer, localStream;
 let callType;
 let incomingOffer;
 let currentUser = null;
-  
+
 /* LOGIN */
 function login(){
 
-  const input = document.getElementById("codeInput");
-
-  if(!input){
-    console.log("Input not found");
-    return;
-  }
-
-  const code = input.value.trim();
-
-  console.log("Entered:", code);
+  const code = document.getElementById("codeInput").value.trim();
 
   if(code === "2213"){
     username = "Tumaji";
@@ -314,7 +305,6 @@ function login(){
     return;
   }
 
-  // Initialize socket ONLY after login
   socket = io();
 
   document.getElementById("loginScreen").style.display = "none";
@@ -342,17 +332,18 @@ function initSocketEvents(){
 
   socket.on("online users", users=>{
     let other = users.find(u=>u!==username);
-    status.innerText = other ? other+" ● Online" : "Offline";
+    document.getElementById("status").innerText =
+      other ? other+" ● Online" : "Offline";
   });
 
- socket.on("incoming-call", data=>{
-  currentUser = data.from;
-  callType = data.type;
-  incomingOffer = data.offer;
+  socket.on("incoming-call", data=>{
+    currentUser = data.from;
+    callType = data.type;
+    incomingOffer = data.offer;
 
-  callerText.innerText = data.from + " calling";
-  incomingCall.style.display="block";
-});
+    document.getElementById("callerText").innerText = data.from + " calling";
+    document.getElementById("incomingCall").style.display="block";
+  });
 
   socket.on("call-answered", async answer=>{
     await peer.setRemoteDescription(answer);
@@ -362,16 +353,16 @@ function initSocketEvents(){
     alert("Call rejected");
   });
 
-  socket.on("call-ended", () => {
-  endCall();
-});
-  
- socket.on("ice-candidate", async candidate=>{
-  if(peer){
-    await peer.addIceCandidate(candidate);
-  }
-});
+  socket.on("call-ended", ()=>{
+    endCall();
+  });
 
+  socket.on("ice-candidate", async candidate=>{
+    if(peer){
+      await peer.addIceCandidate(candidate);
+    }
+  });
+}
 
 /* CHAT */
 function sendMessage(){
@@ -420,9 +411,7 @@ async function startCall(type){
 
   callType = type;
 
-  // Find other user automatically
-  socket.emit("get-users");
-
+  // get other user
   socket.once("online users", users => {
     currentUser = users.find(u => u !== username);
   });
@@ -447,7 +436,7 @@ async function startCall(type){
 
 async function acceptCall(){
 
-  incomingCall.style.display="none";
+  document.getElementById("incomingCall").style.display="none";
 
   if(callType==="video"){
     localStream = await navigator.mediaDevices.getUserMedia({video:true,audio:true});
@@ -469,53 +458,21 @@ async function acceptCall(){
   showVideo();
 }
 
-async function startAnswer(){
-
-  if(callType==="video"){
-    localStream = await navigator.mediaDevices.getUserMedia({video:true,audio:true});
-  } else {
-    localStream = await navigator.mediaDevices.getUserMedia({audio:true});
-  }
-
-  createPeer();
-
-  localStream.getTracks().forEach(t=>peer.addTrack(t,localStream));
-
-  await peer.setRemoteDescription(incomingOffer);
-
-  let answer = await peer.createAnswer();
-  await peer.setLocalDescription(answer);
-
-  socket.emit("call-accepted",{answer});
-
-  showVideo();
-}
-
 function rejectCall(){
-  incomingCall.style.display="none";
-  socket.emit("call-rejected");
+  document.getElementById("incomingCall").style.display="none";
+  socket.emit("call-rejected",{to:currentUser});
 }
 
 function createPeer(){
 
   peer = new RTCPeerConnection({
     iceServers: [
-
-      // STUN (existing)
       { urls: "stun:stun.l.google.com:19302" },
-
-      // ✅ FREE TURN SERVER
       {
         urls: "turn:openrelay.metered.ca:80",
         username: "openrelayproject",
         credential: "openrelayproject"
-      },
-      {
-        urls: "turn:openrelay.metered.ca:443",
-        username: "openrelayproject",
-        credential: "openrelayproject"
       }
-
     ]
   });
 
@@ -524,14 +481,11 @@ function createPeer(){
   };
 
   peer.onicecandidate = e=>{
-  if(e.candidate){
-    socket.emit("ice-candidate",{
-      to: currentUser,
-      candidate: e.candidate
-    });
-  }
-};
-  
+    if(e.candidate){
+      socket.emit("ice-candidate",{to:currentUser,candidate:e.candidate});
+    }
+  };
+}
 
 function showVideo(){
   videoScreen.style.display="block";
@@ -540,34 +494,30 @@ function showVideo(){
 
 function endCall(){
 
-  // ✅ notify other user
   if(socket && currentUser){
-    socket.emit("call-ended", { to: currentUser });
+    socket.emit("call-ended",{to:currentUser});
   }
 
-  // Close connection
-  if (peer) {
+  if(peer){
     peer.close();
-    peer = null;
+    peer=null;
   }
 
-  // Stop camera + mic
-  if (localStream) {
-    localStream.getTracks().forEach(track => track.stop());
-    localStream = null;
+  if(localStream){
+    localStream.getTracks().forEach(t=>t.stop());
+    localStream=null;
   }
 
-  // Clear video
-  remoteVideo.srcObject = null;
-  localVideo.srcObject = null;
+  remoteVideo.srcObject=null;
+  localVideo.srcObject=null;
 
-  // Hide video screen
-  document.getElementById("videoScreen").style.display = "none";
-
-  // Show chat again
-  document.getElementById("chat").style.display = "flex";
+  videoScreen.style.display="none";
+  chat.style.display="flex";
 }
+
+// LOGIN BUTTON
 document.getElementById("loginBtn").addEventListener("click", login);
+
 </script>
 
 </body>
