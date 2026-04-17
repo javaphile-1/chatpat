@@ -226,14 +226,11 @@ button {
     type="password"
     placeholder="Input code"
     autocomplete="off"
-    autocorrect="off"
-    autocapitalize="off"
-    spellcheck="false"
   >
 
   <br><br>
 
-  <button onclick="login()">Enter</button>
+  <button id="loginBtn">Enter</button>
 </div>
 
 <!-- CHAT -->
@@ -298,14 +295,14 @@ function login(){
 
   const input = document.getElementById("codeInput");
 
-  if(!input) {
-    console.log("codeInput not found");
+  if(!input){
+    console.log("Input not found");
     return;
   }
 
   const code = input.value.trim();
 
-  console.log("Entered code:", code); // debug
+  console.log("Entered:", code);
 
   if(code === "2213"){
     username = "Tumaji";
@@ -314,10 +311,10 @@ function login(){
     username = "Rani";
   }
   else{
-    return; // do nothing
+    return;
   }
 
-  // ✅ INIT SOCKET AFTER SUCCESS
+  // Initialize socket ONLY after login
   socket = io();
 
   document.getElementById("loginScreen").style.display = "none";
@@ -570,7 +567,7 @@ function endCall(){
   // Show chat again
   document.getElementById("chat").style.display = "flex";
 }
-
+document.getElementById("loginBtn").addEventListener("click", login);
 </script>
 
 </body>
