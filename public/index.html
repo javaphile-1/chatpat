@@ -296,18 +296,34 @@ let currentUser = null;
 /* LOGIN */
 function login(){
 
-  const code = document.getElementById("codeInput").value.trim();
+  const input = document.getElementById("codeInput");
 
-  if(!SECRET_CODES[code]) return;
+  if(!input) {
+    console.log("codeInput not found");
+    return;
+  }
 
-  username = SECRET_CODES[code];
+  const code = input.value.trim();
 
+  console.log("Entered code:", code); // debug
+
+  if(code === "2213"){
+    username = "Tumaji";
+  }
+  else if(code === "1323"){
+    username = "Rani";
+  }
+  else{
+    return; // do nothing
+  }
+
+  // ✅ INIT SOCKET AFTER SUCCESS
   socket = io();
 
-  document.getElementById("loginScreen").style.display="none";
-  document.getElementById("chat").style.display="flex";
+  document.getElementById("loginScreen").style.display = "none";
+  document.getElementById("chat").style.display = "flex";
 
-  document.getElementById("username").innerText=username;
+  document.getElementById("username").innerText = username;
 
   socket.emit("user joined", username);
 
