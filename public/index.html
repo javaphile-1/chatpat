@@ -289,7 +289,8 @@ let peer, localStream;
 let callType;
 let incomingOffer;
 let currentUser = null;
-
+let otherUser = null;
+  
 /* LOGIN */
 function login(){
 
@@ -330,11 +331,13 @@ function initSocketEvents(){
     if(el) el.innerText="✔✔";
   });
 
-  socket.on("online users", users=>{
-    let other = users.find(u=>u!==username);
-    document.getElementById("status").innerText =
-      other ? other+" ● Online" : "Offline";
-  });
+socket.on("online users", users=>{
+
+  otherUser = users.find(u => u !== username);
+
+  document.getElementById("status").innerText =
+    otherUser ? otherUser + " ● Online" : "Offline";
+});
 
   socket.on("incoming-call", data=>{
     currentUser = data.from;
@@ -409,12 +412,13 @@ function addMessage(msg){
 /* CALL */
 async function startCall(type){
 
-  callType = type;
+  if(!otherUser){
+    alert("Other user not online");
+    return;
+  }
 
-  // get other user
-  socket.once("online users", users => {
-    currentUser = users.find(u => u !== username);
-  });
+  currentUser = otherUser;  // ✅ IMPORTANT FIX
+  callType = type;
 
   if(type==="video"){
     localStream = await navigator.mediaDevices.getUserMedia({video:true,audio:true});
