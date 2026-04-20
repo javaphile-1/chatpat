@@ -470,32 +470,45 @@ function rejectCall(){
 
 function createPeer(){
 
+
+
   peer = new RTCPeerConnection({
-    iceServers: [
-      { urls: "stun:stun.l.google.com:19302" },
+  iceTransportPolicy: "all",
+  iceServers: [
       {
-        urls: "turn:openrelay.metered.ca:80",
-        username: "openrelayproject",
-        credential: "openrelayproject"
-      }
-    ]
-  });
+        urls: "stun:stun.relay.metered.ca:80",
+      },
+      {
+        urls: "turn:global.relay.metered.ca:80",
+        username: "df8c306708caa3a148c1d45c",
+        credential: "jIGcjx2+VMVdtbmc",
+      },
+      {
+        urls: "turn:global.relay.metered.ca:80?transport=tcp",
+        username: "df8c306708caa3a148c1d45c",
+        credential: "jIGcjx2+VMVdtbmc",
+      },
+      {
+        urls: "turn:global.relay.metered.ca:443",
+        username: "df8c306708caa3a148c1d45c",
+        credential: "jIGcjx2+VMVdtbmc",
+      },
+      {
+        urls: "turns:global.relay.metered.ca:443?transport=tcp",
+        username: "df8c306708caa3a148c1d45c",
+        credential: "jIGcjx2+VMVdtbmc",
+      },
+  ],
+});
 
-peer.ontrack = e => {
 
-  // Add each track manually
-  e.streams[0].getTracks().forEach(track => {
-    remoteStream.addTrack(track);
-  });
-
-  remoteVideo.srcObject = remoteStream;
+peer.oniceconnectionstatechange = () => {
+  console.log("ICE state:", peer.iceConnectionState);
 };
 
-  peer.onicecandidate = e=>{
-    if(e.candidate){
-      socket.emit("ice-candidate",{to:currentUser,candidate:e.candidate});
-    }
-  };
+peer.onconnectionstatechange = () => {
+  console.log("Connection state:", peer.connectionState);
+};
 }
 
 function showVideo(){
