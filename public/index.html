@@ -426,7 +426,7 @@ async function startCall(type){
   } else {
     localStream = await navigator.mediaDevices.getUserMedia({audio:true});
   }
-
+	remoteStream = new MediaStream();
   createPeer();
 
   localStream.getTracks().forEach(t=>peer.addTrack(t,localStream));
@@ -439,28 +439,50 @@ async function startCall(type){
   showVideo();
 }
 
-async function acceptCall(){
+async function acceptCall() {
+  console.log("1. acceptCall triggered");
 
-  document.getElementById("incomingCall").style.display="none";
+  document.getElementById("incomingCall").style.display = "none";
 
-  if(callType==="video"){
-    localStream = await navigator.mediaDevices.getUserMedia({video:true,audio:true});
-  } else {
-    localStream = await navigator.mediaDevices.getUserMedia({audio:true});
+  try {
+    if (callType === "video") {
+      localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+    } else {
+      localStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    }
+
+    console.log("2. got media");
+
+    // ✅ Reset remoteStream for new call
+    remoteStream = new MediaStream();
+
+    createPeer();
+
+    console.log("3. peer created");
+
+    // ✅ FIX 3: Add local tracks to peer
+    localStream.getTracks().forEach(t => peer.addTrack(t, localStream));
+
+    // ✅ FIX 4: Set the incoming offer
+    await peer.setRemoteDescription(new RTCSessionDescription(incomingOffer));
+
+    // ✅ FIX 5: Create and send answer
+    let answer = await peer.createAnswer();
+    await peer.setLocalDescription(answer);
+
+    socket.emit("call-accepted", {
+      to: currentUser,
+      answer: answer
+    });
+
+    console.log("4. answer sent");
+
+    // ✅ FIX 6: Show the video screen
+    showVideo();
+
+  } catch (err) {
+    console.error("ACCEPT CALL ERROR:", err);
   }
-
-  createPeer();
-
-  localStream.getTracks().forEach(t=>peer.addTrack(t,localStream));
-
-  await peer.setRemoteDescription(new RTCSessionDescription(incomingOffer));
-
-  let answer = await peer.createAnswer();
-  await peer.setLocalDescription(answer);
-
-  socket.emit("call-accepted",{to:currentUser, answer});
-
-  showVideo();
 }
 
 function rejectCall(){
@@ -470,46 +492,52 @@ function rejectCall(){
 
 function createPeer(){
 
-
-
   peer = new RTCPeerConnection({
-  iceTransportPolicy: "all",
-  iceServers: [
-      {
-        urls: "stun:stun.relay.metered.ca:80",
-      },
-      {
-        urls: "turn:global.relay.metered.ca:80",
+    iceTransportPolicy: "all",
+    iceServers: [
+      { urls: "stun:stun.relay.metered.ca:80" },
+      { urls: "turn:global.relay.metered.ca:80",
         username: "df8c306708caa3a148c1d45c",
-        credential: "jIGcjx2+VMVdtbmc",
-      },
-      {
-        urls: "turn:global.relay.metered.ca:80?transport=tcp",
+        credential: "jIGcjx2+VMVdtbmc" },
+      { urls: "turn:global.relay.metered.ca:80?transport=tcp",
         username: "df8c306708caa3a148c1d45c",
-        credential: "jIGcjx2+VMVdtbmc",
-      },
-      {
-        urls: "turn:global.relay.metered.ca:443",
+        credential: "jIGcjx2+VMVdtbmc" },
+      { urls: "turn:global.relay.metered.ca:443",
         username: "df8c306708caa3a148c1d45c",
-        credential: "jIGcjx2+VMVdtbmc",
-      },
-      {
-        urls: "turns:global.relay.metered.ca:443?transport=tcp",
+        credential: "jIGcjx2+VMVdtbmc" },
+      { urls: "turns:global.relay.metered.ca:443?transport=tcp",
         username: "df8c306708caa3a148c1d45c",
-        credential: "jIGcjx2+VMVdtbmc",
-      },
-  ],
-});
+        credential: "jIGcjx2+VMVdtbmc" },
+    ],
+  });
 
+  // ✅ FIX 1: Send ICE candidates to the other peer
+  peer.onicecandidate = (event) => {
+    if (event.candidate) {
+      socket.emit("ice-candidate", {
+        to: currentUser,
+        candidate: event.candidate
+      });
+    }
+  };
 
-peer.oniceconnectionstatechange = () => {
-  console.log("ICE state:", peer.iceConnectionState);
-};
+  // ✅ FIX 2: Receive remote tracks and show them
+  peer.ontrack = (event) => {
+    console.log("Got remote track:", event.track.kind);
+    remoteStream.addTrack(event.track);
+    remoteVideo.srcObject = remoteStream;
+  };
 
-peer.onconnectionstatechange = () => {
-  console.log("Connection state:", peer.connectionState);
-};
+  peer.oniceconnectionstatechange = () => {
+    console.log("ICE state:", peer.iceConnectionState);
+  };
+
+  peer.onconnectionstatechange = () => {
+    console.log("Connection state:", peer.connectionState);
+  };
 }
+
+
 
 function showVideo(){
 
@@ -550,6 +578,27 @@ function endCall(){
 
 // LOGIN BUTTON
 document.getElementById("loginBtn").addEventListener("click", login);
+
+
+
+function toggleMute() {
+  if (!localStream) return;
+  let audioTrack = localStream.getAudioTracks()[0];
+  if (audioTrack) {
+    audioTrack.enabled = !audioTrack.enabled;
+    console.log("Mic:", audioTrack.enabled ? "ON" : "OFF");
+  }
+}
+
+function toggleCamera() {
+  if (!localStream) return;
+  let videoTrack = localStream.getVideoTracks()[0];
+  if (videoTrack) {
+    videoTrack.enabled = !videoTrack.enabled;
+    console.log("Camera:", videoTrack.enabled ? "ON" : "OFF");
+  }
+}
+
 
 </script>
 
