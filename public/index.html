@@ -421,11 +421,11 @@ async function startCall(type){
   currentUser = otherUser;  // ✅ IMPORTANT FIX
   callType = type;
 
-  if(type==="video"){
-    localStream = await navigator.mediaDevices.getUserMedia({video:true,audio:true});
-  } else {
-    localStream = await navigator.mediaDevices.getUserMedia({audio:true});
-  }
+  if(type === 'video'){
+    localStream = await navigator.mediaDevices.getUserMedia({video: true, audio: true});
+} else {
+    localStream = await navigator.mediaDevices.getUserMedia({video: false, audio: true});
+}
 	remoteStream = new MediaStream();
   createPeer();
 
@@ -550,6 +550,18 @@ async function createPeer(){
   };
 }
 
+peer.ontrack = function(event) {
+    console.log('Got remote track:', event.track.kind);
+    remoteStream.addTrack(event.track);
+    remoteVideo.srcObject = remoteStream;
+    
+    // Force play with audio
+    remoteVideo.muted = false;
+    remoteVideo.play().catch(function(err) {
+        console.log('Autoplay blocked, trying again:', err);
+    });
+};
+
 
 function showVideo(){
 
@@ -594,22 +606,28 @@ document.getElementById("loginBtn").addEventListener("click", login);
 
 
 function toggleMute() {
-  if (!localStream) return;
-  let audioTrack = localStream.getAudioTracks()[0];
-  if (audioTrack) {
-    audioTrack.enabled = !audioTrack.enabled;
-    console.log("Mic:", audioTrack.enabled ? "ON" : "OFF");
-  }
+    if (!localStream) return;
+    var audioTrack = localStream.getAudioTracks()[0];
+    if (audioTrack) {
+        audioTrack.enabled = !audioTrack.enabled;
+        // Update button text
+        document.querySelector('.controlBtn[onclick="toggleMute()"]').innerText = 
+            audioTrack.enabled ? '🔇' : '🔈';
+        console.log('Mic:', audioTrack.enabled ? 'ON' : 'OFF');
+    }
 }
 
 function toggleCamera() {
-  if (!localStream) return;
-  let videoTrack = localStream.getVideoTracks()[0];
-  if (videoTrack) {
-    videoTrack.enabled = !videoTrack.enabled;
-    console.log("Camera:", videoTrack.enabled ? "ON" : "OFF");
-  }
+    if (!localStream) return;
+    var videoTrack = localStream.getVideoTracks()[0];
+    if (videoTrack) {
+        videoTrack.enabled = !videoTrack.enabled;
+        document.querySelector('.controlBtn[onclick="toggleCamera()"]').innerText = 
+            videoTrack.enabled ? '🎥' : '📷';
+        console.log('Camera:', videoTrack.enabled ? 'ON' : 'OFF');
+    }
 }
+
 
 
 </script>
