@@ -539,6 +539,9 @@ async function createPeer(){
     console.log("Got remote track:", event.track.kind);
     remoteStream.addTrack(event.track);
     remoteVideo.srcObject = remoteStream;
+	   remoteVideo.muted = false;
+    remoteVideo.play().catch(function(err) {
+        console.log('Autoplay blocked, trying again:', err);
   };
  
   peer.oniceconnectionstatechange = () => {
@@ -549,19 +552,6 @@ async function createPeer(){
     console.log("Connection state:", peer.connectionState);
   };
 }
-
-peer.ontrack = function(event) {
-    console.log('Got remote track:', event.track.kind);
-    remoteStream.addTrack(event.track);
-    remoteVideo.srcObject = remoteStream;
-    
-    // Force play with audio
-    remoteVideo.muted = false;
-    remoteVideo.play().catch(function(err) {
-        console.log('Autoplay blocked, trying again:', err);
-    });
-};
-
 
 function showVideo(){
 
