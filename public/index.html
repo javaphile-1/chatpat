@@ -490,46 +490,65 @@ function rejectCall(){
   socket.emit("call-rejected",{to:currentUser});
 }
 
-function createPeer(){
 
-  peer = new RTCPeerConnection({
-
-  iceServers: [
-
-    { urls: "stun:stun.l.google.com:19302" }
-
-  ]
-
-});
-
+async function createPeer(){
  
-
-  // ✅ FIX 1: Send ICE candidates to the other peer
+  // Fetch fresh TURN credentials from Metered API
+  let iceServers;
+  try {
+    const response = await fetch("https://connectlife.metered.live/api/v1/turn/credentials?apiKey=7d5869857d8a714570bd2a85a5c58a9c8d2e%22);
+    iceServers = await response.json();
+    console.log("ICE servers fetched:", iceServers);
+  } catch(err) {
+    console.error("Failed to fetch ICE servers, using fallback:", err);
+    iceServers = [
+      { urls: "stun:stun.relay.metered.ca:80" },
+      { urls: "turn:global.relay.metered.ca:80",
+        username: "df8c306708caa3a148c1d45c",
+        credential: "jIGcjx2+VMVdtbmc" },
+      { urls: "turn:global.relay.metered.ca:80?transport=tcp",
+        username: "df8c306708caa3a148c1d45c",
+        credential: "jIGcjx2+VMVdtbmc" },
+      { urls: "turn:global.relay.metered.ca:443",
+        username: "df8c306708caa3a148c1d45c",
+        credential: "jIGcjx2+VMVdtbmc" },
+      { urls: "turns:global.relay.metered.ca:443?transport=tcp",
+        username: "df8c306708caa3a148c1d45c",
+        credential: "jIGcjx2+VMVdtbmc" },
+    ];
+  }
+ 
+  peer = new RTCPeerConnection({
+    iceTransportPolicy: "all",
+    iceServers: iceServers
+  });
+ 
   peer.onicecandidate = (event) => {
     if (event.candidate) {
+      console.log("ICE candidate type:", event.candidate.type, event.candidate.candidate);
       socket.emit("ice-candidate", {
         to: currentUser,
         candidate: event.candidate
       });
+    } else {
+      console.log("All ICE candidates gathered");
     }
   };
-
-  // ✅ FIX 2: Receive remote tracks and show them
+ 
   peer.ontrack = (event) => {
     console.log("Got remote track:", event.track.kind);
     remoteStream.addTrack(event.track);
     remoteVideo.srcObject = remoteStream;
   };
-
+ 
   peer.oniceconnectionstatechange = () => {
     console.log("ICE state:", peer.iceConnectionState);
   };
-
+ 
   peer.onconnectionstatechange = () => {
     console.log("Connection state:", peer.connectionState);
   };
 }
-
 
 
 function showVideo(){
