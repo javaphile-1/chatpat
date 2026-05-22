@@ -58,8 +58,12 @@ const USER_EMAILS = {
 };
 
 function sendOnlineNotification(username) {
+  console.log("📧 Trying to send notification for:", username); 
   const otherUser = Object.keys(USER_EMAILS).find(u => u !== username);
-  if (!otherUser) return;
+  if (!otherUser) {
+    console.log("❌ No other user found");  // ← ADD THIS
+    return;
+  }
 
   const toEmail = USER_EMAILS[otherUser];
 
