@@ -98,6 +98,7 @@ io.on("connection", (socket) => {
   // USER JOIN
   // ======================
   socket.on("user joined", (username) => {
+    debugger;
     socket.username = username;
     users[username] = socket.id;
 
