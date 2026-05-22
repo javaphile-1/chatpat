@@ -98,6 +98,7 @@ io.on("connection", (socket) => {
   // USER JOIN
   // ======================
   socket.on("user joined", (username) => {
+    console.log("🔵 USER JOINED:", username); 
     debugger;
     socket.username = username;
     users[username] = socket.id;
@@ -105,7 +106,9 @@ io.on("connection", (socket) => {
     socket.emit("chat history", messageHistory);
 
     io.emit("online users", Object.keys(users));
+    console.log("🔵 About to send notification");  // ← ADD THIS
     sendOnlineNotification(username);
+    console.log("🔵 Notification function called");
   });
 
   socket.on("disconnect", () => {
