@@ -314,12 +314,12 @@ function login(){
 
   document.getElementById("username").innerText = username;
 
-  initSocketEvents();                    // ✅ Register listeners FIRST
-  socket.emit("user joined", username);  // ✅ THEN emit join
+  initSocketEvents();                    // ✅ Listeners FIRST
+  socket.emit("user joined", username);  // ✅ THEN join
 }
 
 /* SOCKET EVENTS */
-function 	(){
+function initSocketEvents(){
 
   // ✅ Load last 15 messages on login
   socket.on("chat history", (msgs) => {
@@ -431,7 +431,6 @@ async function startCall(type){
     localStream = await navigator.mediaDevices.getUserMedia({audio:true});
   }
 
-  // ✅ Reset remoteStream for new call
   remoteStream = new MediaStream();
 
   createPeer();
@@ -460,20 +459,16 @@ async function acceptCall() {
 
     console.log("2. got media");
 
-    // ✅ Reset remoteStream for new call
     remoteStream = new MediaStream();
 
     createPeer();
 
     console.log("3. peer created");
 
-    // ✅ Add local tracks to peer
     localStream.getTracks().forEach(t => peer.addTrack(t, localStream));
 
-    // ✅ Set the incoming offer
     await peer.setRemoteDescription(new RTCSessionDescription(incomingOffer));
 
-    // ✅ Create and send answer
     let answer = await peer.createAnswer();
     await peer.setLocalDescription(answer);
 
@@ -484,7 +479,6 @@ async function acceptCall() {
 
     console.log("4. answer sent");
 
-    // ✅ Show the video screen
     showVideo();
 
   } catch (err) {
@@ -502,13 +496,22 @@ function createPeer(){
   peer = new RTCPeerConnection({
     iceTransportPolicy: "all",
     iceServers: [
-      { urls: "stun:stun.l.google.com:19302" },
-      { urls: "stun:stun1.l.google.com:19302" },
-      { urls: "stun:stun2.l.google.com:19302" }
+      { urls: "stun:stun.relay.metered.ca:80" },
+      { urls: "turn:global.relay.metered.ca:80",
+        username: "df8c306708caa3a148c1d45c",
+        credential: "jIGcjx2+VMVdtbmc" },
+      { urls: "turn:global.relay.metered.ca:80?transport=tcp",
+        username: "df8c306708caa3a148c1d45c",
+        credential: "jIGcjx2+VMVdtbmc" },
+      { urls: "turn:global.relay.metered.ca:443",
+        username: "df8c306708caa3a148c1d45c",
+        credential: "jIGcjx2+VMVdtbmc" },
+      { urls: "turns:global.relay.metered.ca:443?transport=tcp",
+        username: "df8c306708caa3a148c1d45c",
+        credential: "jIGcjx2+VMVdtbmc" },
     ],
   });
 
-  // ✅ Send ICE candidates to the other peer
   peer.onicecandidate = (event) => {
     if (event.candidate) {
       socket.emit("ice-candidate", {
@@ -518,7 +521,6 @@ function createPeer(){
     }
   };
 
-  // ✅ Receive remote tracks and show them
   peer.ontrack = (event) => {
     console.log("Got remote track:", event.track.kind);
     remoteStream.addTrack(event.track);
@@ -538,10 +540,8 @@ function showVideo(){
 
   videoScreen.style.display = "block";
 
-  // ensure remote audio is NOT muted
   remoteVideo.muted = false;
 
-  // local video
   if(localStream){
     localVideo.srcObject = localStream;
   }
@@ -570,7 +570,6 @@ function endCall(){
   chat.style.display="flex";
 }
 
-// ✅ Toggle mute
 function toggleMute() {
   if (!localStream) return;
   let audioTrack = localStream.getAudioTracks()[0];
@@ -580,7 +579,6 @@ function toggleMute() {
   }
 }
 
-// ✅ Toggle camera
 function toggleCamera() {
   if (!localStream) return;
   let videoTrack = localStream.getVideoTracks()[0];
