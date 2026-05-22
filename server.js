@@ -185,4 +185,5 @@ socket.on("clear history", () => {
 
 server.listen(3000, "0.0.0.0", () => {
   console.log("Server running on port 3000");
+  console.log("🔴 TEST LOG - If you see this, logs are working");
 });
