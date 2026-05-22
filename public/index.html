@@ -321,6 +321,7 @@ function login(){
 /* SOCKET EVENTS */
 function initSocketEvents(){
 
+  
   // ✅ Load last 15 messages on login
   socket.on("chat history", (msgs) => {
     msgs.forEach(msg => addMessage(msg));
