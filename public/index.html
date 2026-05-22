@@ -244,6 +244,7 @@ button {
 <div id="callBar">
   <button onclick="startCall('audio')">📞 Voice</button>
   <button onclick="startCall('video')">🎥 Video</button>
+  <button onclick="clearChat()">🗑️ Clear</button>
 </div>
 
 <div id="messages"></div>
@@ -367,6 +368,10 @@ function initSocketEvents(){
     if(peer){
       await peer.addIceCandidate(candidate);
     }
+  });
+
+  socket.on("history cleared", () => {
+  document.getElementById("messages").innerHTML = "";
   });
 }
 
@@ -583,6 +588,13 @@ function toggleCamera() {
   if (videoTrack) {
     videoTrack.enabled = !videoTrack.enabled;
     console.log("Camera:", videoTrack.enabled ? "ON" : "OFF");
+  }
+}
+
+function clearChat() {
+  if (confirm("Delete all chat history?")) {
+    socket.emit("clear history");
+    document.getElementById("messages").innerHTML = "";
   }
 }
 
