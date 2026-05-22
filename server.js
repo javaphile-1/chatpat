@@ -128,6 +128,16 @@ io.on("connection", (socket) => {
     io.emit("chat message", msg);
   });
 
+  // ======================
+// CLEAR HISTORY
+// ======================
+socket.on("clear history", () => {
+  messageHistory = [];
+  saveMessages();
+  io.emit("history cleared");
+  console.log("🗑️ Chat history cleared by", socket.username);
+});
+
   socket.on("message seen", (id) => {
     socket.broadcast.emit("message seen", id);
   });
