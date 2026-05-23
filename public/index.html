@@ -181,7 +181,7 @@ button {
   }
 }
 
-/* CALL CONTROLS */
+  /* CALL CONTROLS */
 #callControls {
   position:absolute;
   bottom:20px;
@@ -210,7 +210,7 @@ button {
   font-size:22px;
   color:white;
 }
-
+  
 </style>
 
 </head>
@@ -221,7 +221,7 @@ button {
 <div id="loginScreen">
   <h2>Enter</h2>
 
-  <input
+  <input 
     id="codeInput"
     type="password"
     placeholder="Input code"
@@ -244,7 +244,6 @@ button {
 <div id="callBar">
   <button onclick="startCall('audio')">📞 Voice</button>
   <button onclick="startCall('video')">🎥 Video</button>
-  <button onclick="clearChat()">🗑️ Clear</button>
 </div>
 
 <div id="messages"></div>
@@ -315,15 +314,13 @@ function login(){
 
   document.getElementById("username").innerText = username;
 
-  initSocketEvents();                    // ✅ Listeners FIRST
-  socket.emit("user joined", username);  // ✅ THEN join
+  socket.emit("user joined", username);
+
+  initSocketEvents();
 }
 
 /* SOCKET EVENTS */
 function initSocketEvents(){
-  socket.on("chat history", (msgs) => {
-    msgs.forEach(msg => addMessage(msg));
-  });
 
   socket.on("chat message", msg=>{
     addMessage(msg);
@@ -335,13 +332,13 @@ function initSocketEvents(){
     if(el) el.innerText="✔✔";
   });
 
-  socket.on("online users", users=>{
+socket.on("online users", users=>{
 
-    otherUser = users.find(u => u !== username);
+  otherUser = users.find(u => u !== username);
 
-    document.getElementById("status").innerText =
-      otherUser ? otherUser + " ● Online" : "Offline";
-  });
+  document.getElementById("status").innerText =
+    otherUser ? otherUser + " ● Online" : "Offline";
+});
 
   socket.on("incoming-call", data=>{
     currentUser = data.from;
@@ -352,9 +349,9 @@ function initSocketEvents(){
     document.getElementById("incomingCall").style.display="block";
   });
 
-  socket.on("call-answered", async answer=>{
-    await peer.setRemoteDescription(new RTCSessionDescription(answer));
-  });
+socket.on("call-answered", async answer=>{
+  await peer.setRemoteDescription(new RTCSessionDescription(answer));
+});
 
   socket.on("call-rejected", ()=>{
     alert("Call rejected");
@@ -368,10 +365,6 @@ function initSocketEvents(){
     if(peer){
       await peer.addIceCandidate(candidate);
     }
-  });
-
-  socket.on("history cleared", () => {
-  document.getElementById("messages").innerHTML = "";
   });
 }
 
@@ -432,11 +425,9 @@ async function startCall(type){
     localStream = await navigator.mediaDevices.getUserMedia({video: true, audio: true});
 } else {
     localStream = await navigator.mediaDevices.getUserMedia({video: false, audio: true});
-  }
-
-  remoteStream = new MediaStream();
-
-  await createPeer();  // ✅ FIXED: added await
+}
+	remoteStream = new MediaStream();
+  createPeer();
 
   localStream.getTracks().forEach(t=>peer.addTrack(t,localStream));
 
@@ -462,16 +453,20 @@ async function acceptCall() {
 
     console.log("2. got media");
 
+    // ✅ Reset remoteStream for new call
     remoteStream = new MediaStream();
 
-    await createPeer();  // ✅ FIXED: added await
+    createPeer();
 
     console.log("3. peer created");
 
+    // ✅ FIX 3: Add local tracks to peer
     localStream.getTracks().forEach(t => peer.addTrack(t, localStream));
 
+    // ✅ FIX 4: Set the incoming offer
     await peer.setRemoteDescription(new RTCSessionDescription(incomingOffer));
 
+    // ✅ FIX 5: Create and send answer
     let answer = await peer.createAnswer();
     await peer.setLocalDescription(answer);
 
@@ -482,6 +477,7 @@ async function acceptCall() {
 
     console.log("4. answer sent");
 
+    // ✅ FIX 6: Show the video screen
     showVideo();
 
   } catch (err) {
@@ -500,10 +496,9 @@ async function createPeer(){
   // Fetch fresh TURN credentials from Metered API Poonam
   let iceServers;
   try {
-    // ✅ FIXED: added fetch() call
-    const response = await fetch('https://connectlife.metered.live/api/v1/turn/credentials?apiKey=7d5869857d8a714570bd2a85a5c58a9c8d2e');
-    iceServers = await response.json();
-    console.log("✅ ICE servers fetched:", iceServers);
+    var apiUrl = 'https://connectlife.metered.live/api/v1/turn/credentials?apiKey=7d5869857d8a714570bd2a85a5c58a9c8d2e';
+	  iceServers = await response.json();
+    console.log("ICE servers fetched:", iceServers);
   } catch(err) {
     console.error("Failed to fetch ICE servers, using fallback:", err);
     iceServers = [
@@ -539,7 +534,7 @@ async function createPeer(){
       console.log("All ICE candidates gathered");
     }
   };
-
+ 
   peer.ontrack = (event) => {
     console.log("Got remote track:", event.track.kind);
     remoteStream.addTrack(event.track);
@@ -549,11 +544,11 @@ async function createPeer(){
         console.log('Autoplay blocked, trying again:', err);
     });
   };
-
+ 
   peer.oniceconnectionstatechange = () => {
     console.log("ICE state:", peer.iceConnectionState);
   };
-
+ 
   peer.onconnectionstatechange = () => {
     console.log("Connection state:", peer.connectionState);
   };
@@ -573,6 +568,7 @@ function showVideo(){
   }
 }
 
+  
 function endCall(){
 
   if(socket && currentUser){
@@ -624,15 +620,7 @@ function toggleCamera() {
     }
 }
 
-function clearChat() {
-  if (confirm("Delete all chat history?")) {
-    socket.emit("clear history");
-    document.getElementById("messages").innerHTML = "";
-  }
-}
 
-// LOGIN BUTTON
-document.getElementById("loginBtn").addEventListener("click", login);
 
 </script>
 
