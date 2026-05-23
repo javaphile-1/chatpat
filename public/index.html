@@ -432,9 +432,11 @@ async function startCall(type){
     localStream = await navigator.mediaDevices.getUserMedia({video: true, audio: true});
 } else {
     localStream = await navigator.mediaDevices.getUserMedia({video: false, audio: true});
-}
-	remoteStream = new MediaStream();
-  createPeer();
+  }
+
+  remoteStream = new MediaStream();
+
+  await createPeer();  // ✅ FIXED: added await
 
   localStream.getTracks().forEach(t=>peer.addTrack(t,localStream));
 
@@ -462,7 +464,7 @@ async function acceptCall() {
 
     remoteStream = new MediaStream();
 
-    createPeer();
+    await createPeer();  // ✅ FIXED: added await
 
     console.log("3. peer created");
 
@@ -498,9 +500,10 @@ async function createPeer(){
   // Fetch fresh TURN credentials from Metered API Poonam
   let iceServers;
   try {
-    var apiUrl = 'https://connectlife.metered.live/api/v1/turn/credentials?apiKey=7d5869857d8a714570bd2a85a5c58a9c8d2e';
-	  iceServers = await response.json();
-    console.log("ICE servers fetched:", iceServers);
+    // ✅ FIXED: added fetch() call
+    const response = await fetch('https://connectlife.metered.live/api/v1/turn/credentials?apiKey=7d5869857d8a714570bd2a85a5c58a9c8d2e');
+    iceServers = await response.json();
+    console.log("✅ ICE servers fetched:", iceServers);
   } catch(err) {
     console.error("Failed to fetch ICE servers, using fallback:", err);
     iceServers = [
