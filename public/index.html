@@ -502,7 +502,7 @@ async function createPeer(){
   } catch(err) {
     console.error("Failed to fetch ICE servers, using fallback:", err);
     iceServers = [
-      {{
+      {
         urls: "stun:stun.relay.metered.ca:80",
       },
       {
