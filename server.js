@@ -8,17 +8,13 @@ const io = new Server(server);
 
 app.use(express.static("public"));
 
-let users = {}; // username → socketId
+let users = {};
 
 io.on("connection", (socket) => {
 
-  // ======================
-  // USER JOIN
-  // ======================
   socket.on("user joined", (username) => {
     socket.username = username;
     users[username] = socket.id;
-
     io.emit("online users", Object.keys(users));
   });
 
@@ -27,17 +23,11 @@ io.on("connection", (socket) => {
     io.emit("online users", Object.keys(users));
   });
 
-  // ======================
-  // CHAT
-  // ======================
   socket.on("chat message", (msg) => {
-
     if (!msg.text || !msg.text.trim()) return;
-
     msg.id = Date.now();
     msg.time = new Date();
     msg.delivered = true;
-
     io.emit("chat message", msg);
   });
 
@@ -49,41 +39,32 @@ io.on("connection", (socket) => {
     socket.broadcast.emit("typing", username);
   });
 
-  // ======================
-  // CALL FLOW
-  // ======================
-
-// CALL INITIATE
-socket.on("call-user", ({ to, offer, type }) => {
-  io.to(users[to]).emit("incoming-call", {
-    from: socket.username,
-    offer,
-    type
+  socket.on("call-user", ({ to, offer, type }) => {
+    io.to(users[to]).emit("incoming-call", {
+      from: socket.username,
+      offer,
+      type
+    });
   });
-});
 
-// CALL ACCEPTED
-socket.on("call-accepted", ({ to, answer }) => {
-  io.to(users[to]).emit("call-answered", answer);
-});
+  socket.on("call-accepted", ({ to, answer }) => {
+    io.to(users[to]).emit("call-answered", answer);
+  });
 
-// CALL REJECTED
-socket.on("call-rejected", ({ to }) => {
-  io.to(users[to]).emit("call-rejected");
-});
+  socket.on("call-rejected", ({ to }) => {
+    io.to(users[to]).emit("call-rejected");
+  });
 
-// ICE CANDIDATES (FIXED)
-socket.on("ice-candidate", ({ to, candidate }) => {
-  io.to(users[to]).emit("ice-candidate", candidate);
-});
+  socket.on("ice-candidate", ({ to, candidate }) => {
+    io.to(users[to]).emit("ice-candidate", candidate);
+  });
 
-// CALL ENDED
-socket.on("call-ended", ({ to }) => {
-  io.to(users[to]).emit("call-ended");
-});
+  socket.on("call-ended", ({ to }) => {
+    io.to(users[to]).emit("call-ended");
+  });
 
 });
 
-server.listen(3000, () => {
+server.listen(3000, "0.0.0.0", () => {
   console.log("Server running on port 3000");
 });
