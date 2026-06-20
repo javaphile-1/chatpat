@@ -73,7 +73,15 @@ async function saveMessages() {
       body: JSON.stringify(messageHistory)
     });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    console.log(`✅ Saved ${messageHistory.length} messages to JSONBin`);
+
+console.log(
+  `✅ Saved ${messageHistory.length} messages to JSONBin`
+);
+
+console.log(
+  `📦 JSONBin response status: ${res.status}`
+);
+    
   } catch (err) {
     console.error("Failed to save messages:", err.message);
   }
@@ -174,13 +182,24 @@ io.on("connection", (socket) => {
   // ======================
   // CLEAR HISTORY
   // ======================
-  socket.on("clear history", () => {
+socket.on("clear history", async () => {
+
+    if (saveTimer) {
+        clearTimeout(saveTimer);
+        saveTimer = null;
+    }
+
     messageHistory = [];
-    loadedSuccessfully = true; // Intentional clear — allow the save
-    saveMessages();
+
+    loadedSuccessfully = true;
+
+    await saveMessages();
+
     io.emit("history cleared");
+
     console.log("🗑️ Chat history cleared by", socket.username);
-  });
+
+});
 
   socket.on("message seen", (id) => {
     socket.broadcast.emit("message seen", id);
