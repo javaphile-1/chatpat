@@ -321,9 +321,13 @@ function login(){
 
 /* SOCKET EVENTS */
 function initSocketEvents(){
-  socket.on("chat history", (msgs) => {
+ socket.on("chat history", (msgs) => {
+
+    document.getElementById("messages").innerHTML = "";
+
     msgs.forEach(msg => addMessage(msg));
-  });
+
+});
 
   socket.on("chat message", msg=>{
     addMessage(msg);
@@ -503,7 +507,8 @@ async function createPeer(){
     // ✅ FIXED: added fetch() call
     const response = await fetch('https://connectlife.metered.live/api/v1/turn/credentials?apiKey=42668cff375214a62aa7ea140cbfe473d807');
     iceServers = await response.json();
-    console.log("✅ ICE servers fetched:", iceServers);
+	  console.log("✅ ICE servers loaded:", iceServers);
+   // console.log("✅ ICE servers fetched:", iceServers); by mahesh
   } catch(err) {
     console.error("Failed to fetch ICE servers, using fallback:", err);
     iceServers = [
@@ -533,24 +538,73 @@ async function createPeer(){
     ];
   }
  
-  peer = new RTCPeerConnection({
-    iceTransportPolicy: "all",
-    iceServers: iceServers
-  });
- 
-  peer.onicecandidate = (event) => {
-    if (event.candidate) {
-      console.log("ICE candidate type:", event.candidate.type, event.candidate.candidate);
-      socket.emit("ice-candidate", {
-        to: currentUser,
-        candidate: event.candidate
-      });
-    } else {
-      console.log("All ICE candidates gathered");
+peer = new RTCPeerConnection({
+  iceTransportPolicy: "all",
+  iceServers: iceServers
+});
+
+setInterval(async () => {
+
+  if (!peer) return;
+
+  const stats = await peer.getStats();
+
+  stats.forEach(report => {
+
+    if (
+      report.type === "candidate-pair" &&
+      report.state === "succeeded"
+    ) {
+
+      console.log(
+        "Selected Candidate Pair:",
+        report
+      );
+
     }
-  };
+
+  });
+
+}, 5000);
+ 
+peer.onicecandidate = (event) => {
+
+  if(event.candidate){
+
+    console.log(
+      "ICE Candidate:",
+      event.candidate.candidate
+    );
+
+    const candidate = event.candidate.candidate;
+
+    if(candidate.includes("relay")){
+      console.log("✅ TURN Candidate Generated");
+    }
+
+    if(candidate.includes("srflx")){
+      console.log("✅ STUN Candidate Generated");
+    }
+
+    if(candidate.includes("host")){
+      console.log("✅ Local Candidate Generated");
+    }
+
+    socket.emit("ice-candidate", {
+      to: currentUser,
+      candidate: event.candidate
+    });
+
+  }
+
+};
 
   peer.ontrack = (event) => {
+
+	  console.log(
+  "Remote Track Received:",
+  event.track.kind
+);
     console.log("Got remote track:", event.track.kind);
     remoteStream.addTrack(event.track);
     remoteVideo.srcObject = remoteStream;
@@ -560,15 +614,34 @@ async function createPeer(){
     });
   };
 
-  peer.oniceconnectionstatechange = () => {
-    console.log("ICE state:", peer.iceConnectionState);
-  };
+ peer.oniceconnectionstatechange = () => {
 
-  peer.onconnectionstatechange = () => {
-    console.log("Connection state:", peer.connectionState);
-  };
+  console.log(
+    "ICE State:",
+    peer.iceConnectionState
+  );
+
+};
+
+peer.onconnectionstatechange = () => {
+
+  console.log(
+    "Connection State:",
+    peer.connectionState
+  );
+
+};
+//below is added by Mahesh
+peer.onsignalingstatechange = () => {
+
+  console.log(
+    "Signaling State:",
+    peer.signalingState
+  );
+
+};
 }
-
+	
 function showVideo(){
 
   videoScreen.style.display = "block";
@@ -640,9 +713,6 @@ function clearChat() {
     document.getElementById("messages").innerHTML = "";
   }
 }
-
-// LOGIN BUTTON
-document.getElementById("loginBtn").addEventListener("click", login);
 
 </script>
 
