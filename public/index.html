@@ -357,7 +357,16 @@ function initSocketEvents(){
   });
 
   socket.on("call-answered", async answer=>{
-    await peer.setRemoteDescription(new RTCSessionDescription(answer));
+
+  if(!peer){
+    console.error("Peer not ready");
+    return;
+  }
+
+  await peer.setRemoteDescription(
+      new RTCSessionDescription(answer)
+								   
+								   );
   });
 
   socket.on("call-rejected", ()=>{
@@ -368,11 +377,24 @@ function initSocketEvents(){
     endCall();
   });
 
-  socket.on("ice-candidate", async candidate=>{
-    if(peer){
+socket.on("ice-candidate", async candidate=>{
+
+    if(!peer) return;
+
+    try{
+
       await peer.addIceCandidate(candidate);
+
+    }catch(err){
+
+      console.error(
+        "ICE Candidate Error:",
+        err
+      );
+
     }
-  });
+
+});
 
   socket.on("history cleared", () => {
   document.getElementById("messages").innerHTML = "";
@@ -557,8 +579,9 @@ setInterval(async () => {
     ) {
 
       console.log(
-        "Selected Candidate Pair:",
-        report
+    "Candidate Pair Type:",
+  report.localCandidateId,
+  report.remoteCandidateId
       );
 
     }
