@@ -329,7 +329,23 @@ function login(){
 
 /* SOCKET EVENTS */
 function initSocketEvents(){
- socket.on("chat history", (msgs) => {
+ 
+	socket.on("typing", (user) => {
+
+  document.getElementById("typingIndicator").innerText =
+    user + " is typing...";
+
+  clearTimeout(window.typingTimer);
+
+  window.typingTimer = setTimeout(() => {
+
+    document.getElementById("typingIndicator").innerText = "";
+
+  }, 1500);
+
+});
+	
+	socket.on("chat history", (msgs) => {
 
     document.getElementById("messages").innerHTML = "";
 
@@ -417,6 +433,12 @@ function sendMessage(){
   socket.emit("chat message",{user:username,text});
   messageInput.value="";
 }
+
+messageInput.addEventListener("input", () => {
+
+  socket.emit("typing", username);
+
+});
 
 messageInput.addEventListener("keypress",e=>{
   if(e.key==="Enter") sendMessage();
