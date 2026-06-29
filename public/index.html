@@ -259,6 +259,7 @@ button {
 	
 <div id="inputArea">
   <input id="messageInput" placeholder="Type message">
+  <button onclick="startVoiceTyping()">🎤</button>
   <button onclick="sendMessage()">Send</button>
 </div>
 
@@ -760,6 +761,54 @@ function toggleCamera() {
     }
 }
 
+function startVoiceTyping() {
+
+    const SpeechRecognition =
+        window.SpeechRecognition ||
+        window.webkitSpeechRecognition;
+
+    if (!SpeechRecognition) {
+        alert("Voice typing is not supported in this browser.");
+        return;
+    }
+
+    const recognition = new SpeechRecognition();
+
+    recognition.lang = "en-IN";      // Indian English
+	recognition.lang = "mr-IN";      // Indian English
+	
+    recognition.interimResults = true;
+    recognition.continuous = false;
+
+    recognition.onstart = () => {
+        console.log("🎤 Listening...");
+    };
+
+    recognition.onresult = (event) => {
+
+        let transcript = "";
+
+        for (let i = event.resultIndex; i < event.results.length; i++) {
+            transcript += event.results[i][0].transcript;
+        }
+
+        document.getElementById("messageInput").value = transcript;
+
+    };
+
+    recognition.onerror = (event) => {
+        console.error("Voice typing error:", event.error);
+    };
+
+    recognition.onend = () => {
+        console.log("🎤 Voice typing finished");
+    };
+
+    recognition.start();
+}
+
+
+	
 function clearChat() {
   if (confirm("Delete all chat history?")) {
     socket.emit("clear history");
