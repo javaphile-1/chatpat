@@ -97,8 +97,8 @@ const transporter = nodemailer.createTransport({
 });
 
 const USER_EMAILS = {
-  "Tumaji": "tumaji_email@gmail.com",
-  "Rani": "poonamgole19@gmail.com"
+  "User 1": "tumaji_email@gmail.com",
+  "User 2": "poonamgole19@gmail.com"
 };
 
 function sendOnlineNotification(username) {
