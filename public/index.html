@@ -289,8 +289,8 @@ button {
 <script>
 
 const SECRET_CODES = {
-  "2213": "Tumaji",
-  "1323": "Rani"
+  "2213": "User 1",
+  "1323": "User 2"
 };
 
 let socket;
@@ -308,10 +308,10 @@ function login(){
   const code = document.getElementById("codeInput").value.trim();
 
   if(code === "2213"){
-    username = "Tumaji";
+    username = "User 1";
   }
   else if(code === "1323"){
-    username = "Rani";
+    username = "User 2";
   }
   else{
     return;
