@@ -2,6 +2,7 @@ const express = require("express");
 const http = require("http");
 const { Server } = require("socket.io");
 const nodemailer = require("nodemailer");
+const crypto = require("crypto");
 
 const app = express();
 const server = http.createServer(app);
@@ -9,236 +10,1162 @@ const io = new Server(server);
 
 app.use(express.static("public"));
 
-// ✅ JSONBin.io config
-const JSONBIN_API_KEY = "$2a$10$5LHVrYIp.Dt86ypyQ4oetuNQ5vOqiFcQRomq1r2RZg6RlnzWwKFZi";
-const BIN_ID = "6a10624f6877513b27b590b7";
+/* =========================================================
+   CONFIGURATION
+========================================================= */
 
-// ✅ Message protection settings
-let loadedSuccessfully = false;  // Prevents overwriting JSONBin if load failed
-let saveTimer = null;            // Debounce timer for saves
-const MESSAGE_LIMIT = 100;      // Keep last 100 messages (was 15)
+const PORT = process.env.PORT || 3000;
+
+/*
+  IMPORTANT:
+  Add these in Render -> Environment Variables
+
+  JSONBIN_API_KEY
+  JSONBIN_BIN_ID
+
+  GMAIL_USER
+  GMAIL_APP_PASSWORD
+*/
+
+const JSONBIN_API_KEY = process.env.JSONBIN_API_KEY;
+const BIN_ID = process.env.JSONBIN_BIN_ID;
+
+const GMAIL_USER = process.env.GMAIL_USER;
+const GMAIL_APP_PASSWORD = process.env.GMAIL_APP_PASSWORD;
+
+
+/* =========================================================
+   VALIDATE ENVIRONMENT VARIABLES
+========================================================= */
+
+if (!JSONBIN_API_KEY) {
+  console.error("❌ Missing JSONBIN_API_KEY environment variable");
+  process.exit(1);
+}
+
+if (!BIN_ID) {
+  console.error("❌ Missing JSONBIN_BIN_ID environment variable");
+  process.exit(1);
+}
+
+
+/* =========================================================
+   MESSAGE SETTINGS
+========================================================= */
+
+const MESSAGE_LIMIT = 100;
+
+let messageHistory = [];
+
+/*
+  This becomes true ONLY after JSONBin successfully loads.
+  We never save before that.
+*/
+let loadedSuccessfully = false;
+
+
+/*
+  Save queue.
+
+  This prevents multiple messages from doing:
+
+      save A
+      save B
+      save C
+
+  simultaneously and accidentally overwriting each other.
+*/
+let saveQueue = Promise.resolve();
+
+
+/* =========================================================
+   JSONBIN - LOAD
+========================================================= */
 
 async function loadMessages() {
-  // Retry up to 3 times with 2-second delay between attempts
-  for (let attempt = 1; attempt <= 3; attempt++) {
+
+  const MAX_ATTEMPTS = 5;
+
+  for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+
     try {
-      console.log(`📦 Loading messages from JSONBin (attempt ${attempt}/3)...`);
-      const res = await fetch(`https://api.jsonbin.io/v3/b/${BIN_ID}/latest`, {
-        headers: { "X-Master-Key": JSONBIN_API_KEY }
-      });
-      if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
-      const data = await res.json();
-      const msgs = data.record || [];
-      loadedSuccessfully = true;  // ✅ Load succeeded — saves are allowed
-      console.log("✅ Messages loaded from JSONBin");
-      return msgs;
-    } catch (err) {
-      console.error(`📦 Load attempt ${attempt} failed:`, err.message);
-      if (attempt < 3) {
-        await new Promise(r => setTimeout(r, 2000)); // Wait 2s before retry
+
+      console.log(
+        `📦 Loading messages from JSONBin (attempt ${attempt}/${MAX_ATTEMPTS})...`
+      );
+
+      const response = await fetch(
+        `https://api.jsonbin.io/v3/b/${BIN_ID}/latest`,
+        {
+          method: "GET",
+          headers: {
+            "X-Master-Key": JSONBIN_API_KEY
+          }
+        }
+      );
+
+      console.log(
+        `📦 JSONBin load response: HTTP ${response.status}`
+      );
+
+      if (!response.ok) {
+
+        const errorText = await response.text();
+
+        throw new Error(
+          `HTTP ${response.status}: ${errorText}`
+        );
+      }
+
+      const data = await response.json();
+
+      console.log("📦 JSONBin response received");
+
+      const record = data.record;
+
+      /*
+        Your application expects the JSONBin record
+        to be an array of messages.
+      */
+
+      if (!Array.isArray(record)) {
+
+        throw new Error(
+          `Invalid JSONBin record. Expected array but received ${typeof record}`
+        );
+      }
+
+      /*
+        SUCCESS
+      */
+
+      loadedSuccessfully = true;
+
+      console.log(
+        `✅ Messages loaded successfully: ${record.length} messages`
+      );
+
+      return record;
+
+    } catch (error) {
+
+      console.error(
+        `❌ JSONBin load attempt ${attempt} failed:`,
+        error.message
+      );
+
+      if (attempt < MAX_ATTEMPTS) {
+
+        const delay = 3000;
+
+        console.log(
+          `⏳ Waiting ${delay / 1000} seconds before retry...`
+        );
+
+        await new Promise(resolve =>
+          setTimeout(resolve, delay)
+        );
       }
     }
   }
 
-  console.error("📦 ❌ All 3 load attempts failed. SAVES DISABLED to protect existing data.");
+  /*
+    VERY IMPORTANT:
+
+    Do NOT start the server with an empty history.
+
+    Otherwise a temporary JSONBin failure could make the
+    application look like all messages disappeared.
+  */
+
   loadedSuccessfully = false;
-  return [];
+
+  throw new Error(
+    "Unable to load chat history from JSONBin after all attempts."
+  );
 }
 
-// Debounced save — waits 2 seconds after last message before saving
-// Prevents hitting JSONBin rate limits when messages come in rapidly
-function scheduleSave() {
-  if (!loadedSuccessfully) {
-    console.warn("📦 ⚠️ Save skipped — initial load failed. Existing data protected.");
-    return;
-  }
-  if (saveTimer) clearTimeout(saveTimer);
-  saveTimer = setTimeout(() => {
-    saveMessages();
-  }, 2000);
-}
 
-async function saveMessages() {
+/* =========================================================
+   JSONBIN - ACTUAL SAVE
+========================================================= */
+
+async function saveMessagesInternal() {
+
   if (!loadedSuccessfully) {
-    console.warn("📦 ⚠️ Save blocked — initial load failed.");
-    return;
+
+    throw new Error(
+      "Save blocked because JSONBin initial load was not successful."
+    );
   }
-  try {
-    const res = await fetch(`https://api.jsonbin.io/v3/b/${BIN_ID}`, {
+
+  const response = await fetch(
+    `https://api.jsonbin.io/v3/b/${BIN_ID}`,
+    {
       method: "PUT",
+
       headers: {
         "Content-Type": "application/json",
         "X-Master-Key": JSONBIN_API_KEY
       },
+
       body: JSON.stringify(messageHistory)
-    });
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    }
+  );
 
-console.log(
-  `✅ Saved ${messageHistory.length} messages to JSONBin`
-);
+  console.log(
+    `📦 JSONBin save response: HTTP ${response.status}`
+  );
 
-console.log(
-  `📦 JSONBin response status: ${res.status}`
-);
-    
-  } catch (err) {
-    console.error("Failed to save messages:", err.message);
+  if (!response.ok) {
+
+    const errorText = await response.text();
+
+    throw new Error(
+      `JSONBin save failed: HTTP ${response.status}: ${errorText}`
+    );
   }
+
+  console.log(
+    `✅ Saved ${messageHistory.length} messages to JSONBin`
+  );
+
+  return true;
 }
 
-// ✅ Gmail setup
-const transporter = nodemailer.createTransport({
-  service: "gmail",
-  auth: {
-    user: "poonamgole19@gmail.com",
-    pass: "mtcf ifkf aiqb mzgo"
+
+/* =========================================================
+   JSONBIN - SAVE QUEUE
+========================================================= */
+
+function queueSave() {
+
+  if (!loadedSuccessfully) {
+
+    console.warn(
+      "⚠️ Save skipped because JSONBin has not loaded successfully."
+    );
+
+    return Promise.reject(
+      new Error("JSONBin not ready")
+    );
   }
-});
+
+
+  /*
+    Every save waits for the previous save.
+
+    This prevents:
+
+        Save A
+        Save B
+
+    from running at the same time.
+  */
+
+  saveQueue = saveQueue
+    .then(async () => {
+
+      try {
+
+        await saveMessagesInternal();
+
+      } catch (error) {
+
+        console.error(
+          "❌ JSONBin save error:",
+          error.message
+        );
+
+        /*
+          Re-throw so callers know the save failed.
+        */
+
+        throw error;
+      }
+
+    })
+    .catch(error => {
+
+      /*
+        Keep the queue alive for the next save.
+
+        Without this catch, one failed save could break
+        the entire promise chain.
+      */
+
+      console.error(
+        "📦 Save queue recovered after error:",
+        error.message
+      );
+
+    });
+
+  return saveQueue;
+}
+
+
+/* =========================================================
+   GMAIL
+========================================================= */
+
+let transporter = null;
+
+if (GMAIL_USER && GMAIL_APP_PASSWORD) {
+
+  transporter = nodemailer.createTransport({
+    service: "gmail",
+
+    auth: {
+      user: GMAIL_USER,
+      pass: GMAIL_APP_PASSWORD
+    }
+  });
+
+  console.log("📧 Gmail notification system enabled.");
+
+} else {
+
+  console.warn(
+    "⚠️ Gmail environment variables not configured. Email notifications disabled."
+  );
+}
+
+
+/* =========================================================
+   USER EMAILS
+========================================================= */
 
 const USER_EMAILS = {
-  "User 1": "tumaji_email@gmail.com",
-  "User 2": "poonamgole19@gmail.com"
+
+  "User 1":
+    process.env.USER1_EMAIL || "",
+
+  "User 2":
+    process.env.USER2_EMAIL || ""
+
 };
 
+
+/* =========================================================
+   ONLINE EMAIL NOTIFICATION
+========================================================= */
+
 function sendOnlineNotification(username) {
-  console.log("📧 Trying to send notification for:", username); 
-  const otherUser = Object.keys(USER_EMAILS).find(u => u !== username);
-  if (!otherUser) {
-    console.log("❌ No other user found");
+
+  if (!transporter) {
+
+    console.log(
+      "📧 Email notification skipped - Gmail not configured."
+    );
+
     return;
   }
 
+
+  const otherUser = Object.keys(USER_EMAILS)
+    .find(user => user !== username);
+
+
+  if (!otherUser) {
+
+    console.log(
+      "❌ No other user found for notification."
+    );
+
+    return;
+  }
+
+
   const toEmail = USER_EMAILS[otherUser];
 
+
+  if (!toEmail) {
+
+    console.log(
+      `📧 No email configured for ${otherUser}.`
+    );
+
+    return;
+  }
+
+
   const mailOptions = {
-    from: "poonamgole19@gmail.com",
+
+    from: GMAIL_USER,
+
     to: toEmail,
+
     subject: "Amazon Sale is on",
-    text: `Logged in and Grab the offer.\n\nTime: ${new Date().toLocaleString()}`
+
+    text:
+      `Logged in and Grab the offer.\n\n` +
+      `User: ${username}\n` +
+      `Time: ${new Date().toLocaleString()}`
+
   };
 
-  transporter.sendMail(mailOptions, (err, info) => {
-    if (err) {
-      console.error("Email failed:", err.message);
-    } else {
-      console.log("✅ Notification sent to", toEmail);
+
+  transporter.sendMail(
+    mailOptions,
+    (error, info) => {
+
+      if (error) {
+
+        console.error(
+          "❌ Email failed:",
+          error.message
+        );
+
+      } else {
+
+        console.log(
+          "✅ Notification sent to",
+          toEmail
+        );
+
+      }
+
     }
-  });
+  );
 }
 
+
+/* =========================================================
+   CONNECTED USERS
+========================================================= */
+
 let users = {};
-let messageHistory = [];
 
-// ✅ Load messages on startup
-loadMessages().then(msgs => {
-  messageHistory = msgs;
-  console.log("✅ Loaded", messageHistory.length, "messages. Saves:", loadedSuccessfully ? "ENABLED" : "BLOCKED");
-});
 
-io.on("connection", (socket) => {
+/* =========================================================
+   SOCKET.IO
+========================================================= */
 
-  // ======================
-  // USER JOIN
-  // ======================
-  socket.on("user joined", (username) => {
-    console.log("🔵 USER JOINED:", username); 
-    socket.username = username;
-    users[username] = socket.id;
+function initializeSocketEvents() {
 
-    socket.emit("chat history", messageHistory);
+  io.on("connection", (socket) => {
 
-    io.emit("online users", Object.keys(users));
-    console.log("🔵 About to send notification");
-    sendOnlineNotification(username);
-    console.log("🔵 Notification function called");
-  });
+    console.log(
+      "🟢 Socket connected:",
+      socket.id
+    );
 
-  socket.on("disconnect", () => {
-    delete users[socket.username];
-    io.emit("online users", Object.keys(users));
-  });
 
-  // ======================
-  // CHAT
-  // ======================
-  socket.on("chat message", (msg) => {
-    if (!msg.text || !msg.text.trim()) return;
+    /* =====================================================
+       USER JOIN
+    ===================================================== */
 
-    msg.id = Date.now();
-    msg.time = new Date();
-    msg.delivered = true;
+    socket.on("user joined", (username) => {
 
-    messageHistory.push(msg);
-    if (messageHistory.length > MESSAGE_LIMIT) {
-      messageHistory = messageHistory.slice(-MESSAGE_LIMIT);
-    }
+      console.log(
+        "🔵 USER JOINED:",
+        username
+      );
 
-    scheduleSave();  // ✅ Debounced save (prevents rate limiting)
 
-    io.emit("chat message", msg);
-  });
+      if (!username) {
 
-  // ======================
-  // CLEAR HISTORY
-  // ======================
-socket.on("clear history", async () => {
+        console.warn(
+          "⚠️ User joined without username."
+        );
 
-    if (saveTimer) {
-        clearTimeout(saveTimer);
-        saveTimer = null;
-    }
+        return;
+      }
 
-    messageHistory = [];
 
-    loadedSuccessfully = true;
+      socket.username = username;
 
-    await saveMessages();
+      /*
+        If another browser is already logged in with
+        the same username, the newest connection replaces it.
+      */
 
-    io.emit("history cleared");
+      users[username] = socket.id;
 
-    console.log("🗑️ Chat history cleared by", socket.username);
 
-});
+      /*
+        IMPORTANT:
 
-  socket.on("message seen", (id) => {
-    socket.broadcast.emit("message seen", id);
-  });
+        At this point JSONBin has already been loaded because
+        the server does not start until loadMessages() succeeds.
+      */
 
-  socket.on("typing", (username) => {
-    socket.broadcast.emit("typing", username);
-  });
+      socket.emit(
+        "chat history",
+        messageHistory
+      );
 
-  // ======================
-  // CALL FLOW
-  // ======================
-  socket.on("call-user", ({ to, offer, type }) => {
-    io.to(users[to]).emit("incoming-call", {
-      from: socket.username,
-      offer,
-      type
+
+      io.emit(
+        "online users",
+        Object.keys(users)
+      );
+
+
+      console.log(
+        `🟢 ${username} received ${messageHistory.length} history messages`
+      );
+
+
+      /*
+        Send email notification.
+      */
+
+      sendOnlineNotification(username);
+
     });
+
+
+    /* =====================================================
+       DISCONNECT
+    ===================================================== */
+
+    socket.on("disconnect", () => {
+
+      console.log(
+        "🔴 Socket disconnected:",
+        socket.id
+      );
+
+
+      if (socket.username) {
+
+        /*
+          Only remove this username if this socket is still
+          the active socket for that username.
+
+          This prevents an older tab from deleting a newer
+          login.
+        */
+
+        if (
+          users[socket.username] === socket.id
+        ) {
+
+          delete users[socket.username];
+
+        }
+
+      }
+
+
+      io.emit(
+        "online users",
+        Object.keys(users)
+      );
+
+    });
+
+
+    /* =====================================================
+       CHAT MESSAGE
+    ===================================================== */
+
+    socket.on(
+      "chat message",
+      async (msg) => {
+
+        try {
+
+          if (!msg) return;
+
+
+          if (
+            typeof msg.text !== "string" ||
+            !msg.text.trim()
+          ) {
+
+            return;
+          }
+
+
+          if (!socket.username) {
+
+            console.warn(
+              "⚠️ Message received from unauthenticated socket."
+            );
+
+            return;
+          }
+
+
+          /*
+            Create a stronger unique message ID.
+
+            Date.now() alone can theoretically collide if
+            multiple messages arrive within the same millisecond.
+          */
+
+          msg.id = crypto.randomUUID();
+
+          msg.user = socket.username;
+
+          msg.text = msg.text.trim();
+
+          msg.time = new Date().toISOString();
+
+          msg.delivered = true;
+
+
+          /*
+            Add to memory.
+          */
+
+          messageHistory.push(msg);
+
+
+          /*
+            Keep only the last MESSAGE_LIMIT messages.
+          */
+
+          if (
+            messageHistory.length > MESSAGE_LIMIT
+          ) {
+
+            messageHistory =
+              messageHistory.slice(-MESSAGE_LIMIT);
+
+          }
+
+
+          console.log(
+            `💬 New message from ${msg.user}: ${msg.text}`
+          );
+
+
+          /*
+            IMPORTANT:
+
+            Save BEFORE broadcasting.
+
+            This means if the server crashes immediately after
+            receiving the message, the message has already been
+            sent to JSONBin.
+          */
+
+          await queueSave();
+
+
+          /*
+            Now broadcast.
+          */
+
+          io.emit(
+            "chat message",
+            msg
+          );
+
+
+        } catch (error) {
+
+          console.error(
+            "❌ Message processing failed:",
+            error.message
+          );
+
+        }
+
+      }
+    );
+
+
+    /* =====================================================
+       CLEAR HISTORY
+    ===================================================== */
+
+    socket.on(
+      "clear history",
+      async () => {
+
+        try {
+
+          if (!socket.username) {
+
+            console.warn(
+              "⚠️ Unauthorized clear history attempt."
+            );
+
+            return;
+          }
+
+
+          console.log(
+            `🗑️ Chat history clear requested by ${socket.username}`
+          );
+
+
+          /*
+            Clear memory.
+          */
+
+          messageHistory = [];
+
+
+          /*
+            Save empty array to JSONBin.
+
+            Because queueSave() is used, this clear operation
+            waits behind any previous message save.
+          */
+
+          await queueSave();
+
+
+          /*
+            Only tell clients after JSONBin save completed.
+          */
+
+          io.emit(
+            "history cleared"
+          );
+
+
+          console.log(
+            "✅ Chat history cleared successfully."
+          );
+
+
+        } catch (error) {
+
+          console.error(
+            "❌ Failed to clear chat history:",
+            error.message
+          );
+
+        }
+
+      }
+    );
+
+
+    /* =====================================================
+       MESSAGE SEEN
+    ===================================================== */
+
+    socket.on(
+      "message seen",
+      (id) => {
+
+        if (!id) return;
+
+        socket.broadcast.emit(
+          "message seen",
+          id
+        );
+
+      }
+    );
+
+
+    /* =====================================================
+       TYPING
+    ===================================================== */
+
+    socket.on(
+      "typing",
+      (username) => {
+
+        if (!username) return;
+
+        socket.broadcast.emit(
+          "typing",
+          username
+        );
+
+      }
+    );
+
+
+    /* =====================================================
+       CALL USER
+    ===================================================== */
+
+    socket.on(
+      "call-user",
+      ({ to, offer, type }) => {
+
+        if (!to || !offer) {
+
+          console.warn(
+            "⚠️ Invalid call-user request."
+          );
+
+          return;
+        }
+
+
+        const targetSocketId =
+          users[to];
+
+
+        if (!targetSocketId) {
+
+          console.warn(
+            `⚠️ User ${to} is not online.`
+          );
+
+          socket.emit(
+            "call-rejected"
+          );
+
+          return;
+        }
+
+
+        console.log(
+          `📞 ${socket.username} calling ${to} (${type})`
+        );
+
+
+        io.to(targetSocketId).emit(
+          "incoming-call",
+          {
+            from: socket.username,
+            offer,
+            type
+          }
+        );
+
+      }
+    );
+
+
+    /* =====================================================
+       CALL ACCEPTED
+    ===================================================== */
+
+    socket.on(
+      "call-accepted",
+      ({ to, answer }) => {
+
+        if (!to || !answer) {
+
+          console.warn(
+            "⚠️ Invalid call-accepted request."
+          );
+
+          return;
+        }
+
+
+        const targetSocketId =
+          users[to];
+
+
+        if (!targetSocketId) {
+
+          console.warn(
+            `⚠️ Caller ${to} is no longer online.`
+          );
+
+          return;
+        }
+
+
+        console.log(
+          `📞 ${socket.username} accepted call from ${to}`
+        );
+
+
+        io.to(targetSocketId).emit(
+          "call-answered",
+          answer
+        );
+
+      }
+    );
+
+
+    /* =====================================================
+       CALL REJECTED
+    ===================================================== */
+
+    socket.on(
+      "call-rejected",
+      ({ to }) => {
+
+        if (!to) return;
+
+
+        const targetSocketId =
+          users[to];
+
+
+        if (!targetSocketId) return;
+
+
+        console.log(
+          `📞 ${socket.username} rejected call from ${to}`
+        );
+
+
+        io.to(targetSocketId).emit(
+          "call-rejected"
+        );
+
+      }
+    );
+
+
+    /* =====================================================
+       ICE CANDIDATE
+    ===================================================== */
+
+    socket.on(
+      "ice-candidate",
+      ({ to, candidate }) => {
+
+        if (!to || !candidate) {
+
+          console.warn(
+            "⚠️ Invalid ICE candidate."
+          );
+
+          return;
+        }
+
+
+        const targetSocketId =
+          users[to];
+
+
+        if (!targetSocketId) {
+
+          console.warn(
+            `⚠️ Cannot send ICE candidate. ${to} is offline.`
+          );
+
+          return;
+        }
+
+
+        io.to(targetSocketId).emit(
+          "ice-candidate",
+          candidate
+        );
+
+      }
+    );
+
+
+    /* =====================================================
+       CALL ENDED
+    ===================================================== */
+
+    socket.on(
+      "call-ended",
+      ({ to }) => {
+
+        if (!to) return;
+
+
+        const targetSocketId =
+          users[to];
+
+
+        if (!targetSocketId) {
+
+          console.log(
+            `📞 Call ended, but ${to} is offline.`
+          );
+
+          return;
+        }
+
+
+        console.log(
+          `📞 ${socket.username} ended call with ${to}`
+        );
+
+
+        io.to(targetSocketId).emit(
+          "call-ended"
+        );
+
+      }
+    );
+
   });
 
-  socket.on("call-accepted", ({ to, answer }) => {
-    io.to(users[to]).emit("call-answered", answer);
-  });
+}
 
-  socket.on("call-rejected", ({ to }) => {
-    io.to(users[to]).emit("call-rejected");
-  });
 
-  socket.on("ice-candidate", ({ to, candidate }) => {
-    io.to(users[to]).emit("ice-candidate", candidate);
-  });
+/* =========================================================
+   START SERVER
+========================================================= */
 
-  socket.on("call-ended", ({ to }) => {
-    io.to(users[to]).emit("call-ended");
-  });
+async function startServer() {
 
-});
+  console.log("");
+  console.log("======================================");
+  console.log("🚀 STARTING PRIVATE CHAT SERVER");
+  console.log("======================================");
+  console.log("");
 
-const PORT = process.env.PORT || 3000;
-server.listen(PORT, "0.0.0.0", () => {
-  console.log(`Server running on port ${PORT}`);
-});
+
+  /*
+    CRITICAL FIX:
+
+    DO NOT start listening for users until JSONBin
+    history has successfully loaded.
+
+    Previously your application did:
+
+        messageHistory = [];
+
+        loadMessages();
+
+        server.listen();
+
+    That created a race condition.
+
+    Now:
+
+        load JSONBin
+             ↓
+        verify history
+             ↓
+        initialize Socket.IO
+             ↓
+        start server
+  */
+
+  try {
+
+    const loadedMessages =
+      await loadMessages();
+
+
+    /*
+      Extra validation.
+    */
+
+    if (!Array.isArray(loadedMessages)) {
+
+      throw new Error(
+        "Loaded chat history is not an array."
+      );
+
+    }
+
+
+    messageHistory =
+      loadedMessages;
+
+
+    console.log("");
+    console.log(
+      `✅ HISTORY READY: ${messageHistory.length} messages`
+    );
+    console.log("");
+
+
+  } catch (error) {
+
+    console.error("");
+    console.error(
+      "======================================"
+    );
+
+    console.error(
+      "❌ SERVER STARTUP ABORTED"
+    );
+
+    console.error(
+      "======================================"
+    );
+
+    console.error(
+      "Reason:",
+      error.message
+    );
+
+    console.error("");
+    console.error(
+      "⚠️ JSONBin history could not be loaded."
+    );
+
+    console.error(
+      "⚠️ Server will NOT start with empty history."
+    );
+
+    console.error(
+      "⚠️ This protects your existing chat data."
+    );
+
+    console.error("");
+
+
+    /*
+      Exit so Render can restart the service.
+      We never run the chat server with an unknown
+      or empty database state.
+    */
+
+    process.exit(1);
+
+  }
+
+
+  /*
+    Only initialize Socket.IO after history is ready.
+  */
+
+  initializeSocketEvents();
+
+
+  /*
+    Start HTTP server.
+  */
+
+  server.listen(
+    PORT,
+    "0.0.0.0",
+    () => {
+
+      console.log("");
+      console.log(
+        "======================================"
+      );
+
+      console.log(
+        `✅ SERVER RUNNING ON PORT ${PORT}`
+      );
+
+      console.log(
+        `✅ Chat history: ${messageHistory.length} messages`
+      );
+
+      console.log(
+        "✅ JSONBin persistence: ENABLED"
+      );
+
+      console.log(
+        "======================================"
+      );
+
+      console.log("");
+
+    }
+  );
+
+}
+
+
+/* =========================================================
+   START APPLICATION
+========================================================= */
+
+startServer().catch(
+  (error) => {
+
+    console.error(
+      "❌ FATAL SERVER ERROR:",
+      error
+    );
+
+    process.exit(1);
+
+  }
+);
