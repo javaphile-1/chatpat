@@ -8,7 +8,6 @@ const app = express();
 const server = http.createServer(app);
 const io = new Server(server);
 
-
 app.use(express.static("public"));
 
 /* =========================================================
@@ -124,6 +123,11 @@ async function loadMessages() {
 
       const record = data.record;
 
+console.log(
+  `?? JSONBin currently contains ${Array.isArray(record) ? record.length : "INVALID"} messages`
+);
+
+
       /*
         Your application expects the JSONBin record
         to be an array of messages.
@@ -191,14 +195,42 @@ async function loadMessages() {
    JSONBIN - ACTUAL SAVE
 ========================================================= */
 
+
+
+/* =========================================================
+   JSONBIN - SAVE QUEUE
+========================================================= */
+
+function queueSave() {
+
+  if (!loadedSuccessfully) {
+    return Promise.reject(
+      new Error("JSONBin not ready")
+    );
+  }
+
+  saveQueue = saveQueue
+    .catch(() => {
+      // Recover queue after previous save failure
+    })
+    .then(() => {
+      return saveMessagesInternal();
+    });
+
+  return saveQueue;
+}
+
 async function saveMessagesInternal() {
 
   if (!loadedSuccessfully) {
-
     throw new Error(
       "Save blocked because JSONBin initial load was not successful."
     );
   }
+
+  console.log(
+    `?? Saving ${messageHistory.length} messages to JSONBin...`
+  );
 
   const response = await fetch(
     `https://api.jsonbin.io/v3/b/${BIN_ID}`,
@@ -214,96 +246,31 @@ async function saveMessagesInternal() {
     }
   );
 
+  const responseText = await response.text();
+
   console.log(
-    `📦 JSONBin save response: HTTP ${response.status}`
+    `?? JSONBin save response: HTTP ${response.status}`
   );
 
   if (!response.ok) {
 
-    const errorText = await response.text();
+    console.error(
+      "? JSONBin response:",
+      responseText
+    );
 
     throw new Error(
-      `JSONBin save failed: HTTP ${response.status}: ${errorText}`
+      `JSONBin save failed: HTTP ${response.status}`
     );
   }
 
   console.log(
-    `✅ Saved ${messageHistory.length} messages to JSONBin`
+    `? JSONBin saved ${messageHistory.length} messages`
   );
 
   return true;
 }
 
-
-/* =========================================================
-   JSONBIN - SAVE QUEUE
-========================================================= */
-
-function queueSave() {
-
-  if (!loadedSuccessfully) {
-
-    console.warn(
-      "⚠️ Save skipped because JSONBin has not loaded successfully."
-    );
-
-    return Promise.reject(
-      new Error("JSONBin not ready")
-    );
-  }
-
-
-  /*
-    Every save waits for the previous save.
-
-    This prevents:
-
-        Save A
-        Save B
-
-    from running at the same time.
-  */
-
-  saveQueue = saveQueue
-    .then(async () => {
-
-      try {
-
-        await saveMessagesInternal();
-
-      } catch (error) {
-
-        console.error(
-          "❌ JSONBin save error:",
-          error.message
-        );
-
-        /*
-          Re-throw so callers know the save failed.
-        */
-
-        throw error;
-      }
-
-    })
-    .catch(error => {
-
-      /*
-        Keep the queue alive for the next save.
-
-        Without this catch, one failed save could break
-        the entire promise chain.
-      */
-
-      console.error(
-        "📦 Save queue recovered after error:",
-        error.message
-      );
-
-    });
-
-  return saveQueue;
-}
 
 
 /* =========================================================
