@@ -1,3 +1,4 @@
+```html
 <!DOCTYPE html>
 <html>
 <head>
@@ -53,6 +54,7 @@ body {
   display:flex;
   gap:10px;
   padding:10px;
+  flex-wrap:wrap;
 }
 
 /* BUTTON */
@@ -62,6 +64,12 @@ button {
   background:#25d366;
   color:white;
   cursor:pointer;
+}
+
+/* DISABLED BUTTON */
+button:disabled {
+  opacity:0.6;
+  cursor:not-allowed;
 }
 
 /* MOBILE BUTTON SIZE */
@@ -76,6 +84,11 @@ button {
     font-size:14px;
     padding:8px 12px;
   }
+}
+
+/* RESET JSONBIN BUTTON */
+#resetJsonBinBtn {
+  background:#d32f2f;
 }
 
 /* MESSAGES */
@@ -219,6 +232,7 @@ button {
 
 <!-- LOGIN -->
 <div id="loginScreen">
+
   <h2>Enter</h2>
 
   <input
@@ -231,60 +245,132 @@ button {
   <br><br>
 
   <button id="loginBtn">Enter</button>
+
 </div>
+
 
 <!-- CHAT -->
 <div id="chat">
 
-<div id="header">
-  <span id="username"></span>
-  <span id="status"></span>
+  <div id="header">
+    <span id="username"></span>
+    <span id="status"></span>
+  </div>
+
+
+  <div id="callBar">
+
+    <button onclick="startCall('audio')">
+      📞 Voice
+    </button>
+
+    <button onclick="startCall('video')">
+      🎥 Video
+    </button>
+
+    <!-- RESET JSONBIN BUTTON -->
+    <button
+      id="resetJsonBinBtn"
+      onclick="resetJsonBin()">
+      🔄 Reset JSONBin
+    </button>
+
+  </div>
+
+
+  <div id="messages"></div>
+
+
+  <div
+    id="typingIndicator"
+    style="
+      padding-left:10px;
+      font-size:12px;
+      color:gray;
+      height:20px;">
+  </div>
+
+
+  <div id="inputArea">
+
+    <input
+      id="messageInput"
+      placeholder="Type message"
+    >
+
+    <button onclick="startVoiceTyping()">
+      🎤
+    </button>
+
+    <button onclick="sendMessage()">
+      Send
+    </button>
+
+  </div>
+
 </div>
 
-<div id="callBar">
-  <button onclick="startCall('audio')">📞 Voice</button>
-  <button onclick="startCall('video')">🎥 Video</button>
-  <button onclick="clearChat()">🗑️ Clear</button>
-</div>
-
-<div id="messages"></div>
-	
-<div id="typingIndicator"
-     style="
-       padding-left:10px;
-       font-size:12px;
-       color:gray;
-       height:20px;">
-</div>
-	
-<div id="inputArea">
-  <input id="messageInput" placeholder="Type message">
-  <button onclick="startVoiceTyping()">🎤</button>
-  <button onclick="sendMessage()">Send</button>
-</div>
-
-</div>
 
 <!-- INCOMING CALL -->
 <div id="incomingCall">
+
   <p id="callerText"></p>
-  <button onclick="acceptCall()">Accept</button>
-  <button onclick="rejectCall()">Reject</button>
+
+  <button onclick="acceptCall()">
+    Accept
+  </button>
+
+  <button onclick="rejectCall()">
+    Reject
+  </button>
+
 </div>
+
 
 <!-- VIDEO -->
 <div id="videoScreen">
-<video id="remoteVideo" autoplay playsinline></video>
-<video id="localVideo" autoplay muted playsinline></video>
+
+  <video
+    id="remoteVideo"
+    autoplay
+    playsinline>
+  </video>
+
+  <video
+    id="localVideo"
+    autoplay
+    muted
+    playsinline>
+  </video>
+
 
   <div id="callControls">
-    <button class="controlBtn" onclick="toggleMute()">🔇</button>
-    <button class="controlBtn" onclick="toggleCamera()">🎥</button>
-    <button class="endBtn" onclick="endCall()">🔴</button>
+
+    <button
+      class="controlBtn"
+      onclick="toggleMute()">
+      🔇
+    </button>
+
+    <button
+      class="controlBtn"
+      onclick="toggleCamera()">
+      🎥
+    </button>
+
+    <button
+      class="endBtn"
+      onclick="endCall()">
+      🔴
+    </button>
+
   </div>
+
 </div>
 
+
 <script src="/socket.io/socket.io.js"></script>
+
 
 <script>
 
@@ -300,523 +386,1334 @@ let callType;
 let incomingOffer;
 let currentUser = null;
 let otherUser = null;
-let remoteStream = new MediaStream();   // ✅ ADD THIS
-  
-/* LOGIN */
+
+let remoteStream = new MediaStream();
+
+
+/* =========================================================
+   LOGIN
+========================================================= */
+
 function login(){
 
-  const code = document.getElementById("codeInput").value.trim();
+  const code =
+    document.getElementById("codeInput")
+      .value
+      .trim();
+
 
   if(code === "2213"){
+
     username = "User 1";
+
   }
   else if(code === "1323"){
+
     username = "User 2";
+
   }
   else{
+
     return;
+
   }
+
 
   socket = io();
 
-  document.getElementById("loginScreen").style.display = "none";
-  document.getElementById("chat").style.display = "flex";
 
-  document.getElementById("username").innerText = username;
+  document.getElementById("loginScreen")
+    .style.display = "none";
 
-  initSocketEvents();                    // ✅ Listeners FIRST
-  socket.emit("user joined", username);  // ✅ THEN join
+
+  document.getElementById("chat")
+    .style.display = "flex";
+
+
+  document.getElementById("username")
+    .innerText = username;
+
+
+  /*
+    Register listeners FIRST.
+  */
+
+  initSocketEvents();
+
+
+  /*
+    Then join.
+  */
+
+  socket.emit(
+    "user joined",
+    username
+  );
 }
 
-/* SOCKET EVENTS */
+
+/* =========================================================
+   SOCKET EVENTS
+========================================================= */
+
 function initSocketEvents(){
- 
-	socket.on("typing", (user) => {
 
-  document.getElementById("typingIndicator").innerText =
-    user + " is typing...";
 
-  clearTimeout(window.typingTimer);
+  /* =======================================================
+     TYPING
+  ======================================================= */
 
-  window.typingTimer = setTimeout(() => {
+  socket.on("typing", (user) => {
 
-    document.getElementById("typingIndicator").innerText = "";
+    document.getElementById(
+      "typingIndicator"
+    ).innerText =
+      user + " is typing...";
 
-  }, 1500);
 
-});
-	
-	socket.on("chat history", (msgs) => {
+    clearTimeout(
+      window.typingTimer
+    );
 
-    document.getElementById("messages").innerHTML = "";
 
-    msgs.forEach(msg => addMessage(msg));
+    window.typingTimer =
+      setTimeout(() => {
 
-});
+        document.getElementById(
+          "typingIndicator"
+        ).innerText = "";
 
-  socket.on("chat message", msg=>{
-    addMessage(msg);
-    socket.emit("message seen", msg.id);
+      }, 1500);
+
   });
 
-  socket.on("message seen", id=>{
-    let el=document.getElementById("tick-"+id);
-    if(el) el.innerText="✔✔";
+
+  /* =======================================================
+     CHAT HISTORY
+  ======================================================= */
+
+  socket.on("chat history", (msgs) => {
+
+    document.getElementById(
+      "messages"
+    ).innerHTML = "";
+
+
+    msgs.forEach(
+      msg => addMessage(msg)
+    );
+
   });
 
-  socket.on("online users", users=>{
 
-    otherUser = users.find(u => u !== username);
+  /* =======================================================
+     CHAT MESSAGE
+  ======================================================= */
 
-    document.getElementById("status").innerText =
-      otherUser ? otherUser + " ● Online" : "Offline";
-  });
+  socket.on(
+    "chat message",
+    msg => {
 
-  socket.on("incoming-call", data=>{
-    currentUser = data.from;
-    callType = data.type;
-    incomingOffer = data.offer;
+      addMessage(msg);
 
-    document.getElementById("callerText").innerText = data.from + " calling";
-    document.getElementById("incomingCall").style.display="block";
-  });
+      socket.emit(
+        "message seen",
+        msg.id
+      );
 
-  socket.on("call-answered", async answer=>{
+    }
+  );
 
-  if(!peer){
-    console.error("Peer not ready");
-    return;
-  }
 
-  await peer.setRemoteDescription(
-      new RTCSessionDescription(answer)
-								   
-								   );
-  });
+  /* =======================================================
+     MESSAGE SEEN
+  ======================================================= */
 
-  socket.on("call-rejected", ()=>{
-    alert("Call rejected");
-  });
+  socket.on(
+    "message seen",
+    id => {
 
-  socket.on("call-ended", ()=>{
-    endCall();
-  });
+      let el =
+        document.getElementById(
+          "tick-" + id
+        );
 
-socket.on("ice-candidate", async candidate=>{
 
-    if(!peer) return;
+      if(el) {
 
-    try{
+        el.innerText = "✔✔";
 
-      await peer.addIceCandidate(candidate);
+      }
 
-    }catch(err){
+    }
+  );
 
-      console.error(
-        "ICE Candidate Error:",
-        err
+
+  /* =======================================================
+     ONLINE USERS
+  ======================================================= */
+
+  socket.on(
+    "online users",
+    users => {
+
+      otherUser =
+        users.find(
+          u => u !== username
+        );
+
+
+      document.getElementById(
+        "status"
+      ).innerText =
+        otherUser
+          ? otherUser + " ● Online"
+          : "Offline";
+
+    }
+  );
+
+
+  /* =======================================================
+     INCOMING CALL
+  ======================================================= */
+
+  socket.on(
+    "incoming-call",
+    data => {
+
+      currentUser = data.from;
+
+      callType = data.type;
+
+      incomingOffer = data.offer;
+
+
+      document.getElementById(
+        "callerText"
+      ).innerText =
+        data.from + " calling";
+
+
+      document.getElementById(
+        "incomingCall"
+      ).style.display = "block";
+
+    }
+  );
+
+
+  /* =======================================================
+     CALL ANSWERED
+  ======================================================= */
+
+  socket.on(
+    "call-answered",
+    async answer => {
+
+      if(!peer){
+
+        console.error(
+          "Peer not ready"
+        );
+
+        return;
+
+      }
+
+
+      await peer.setRemoteDescription(
+        new RTCSessionDescription(answer)
+      );
+
+    }
+  );
+
+
+  /* =======================================================
+     CALL REJECTED
+  ======================================================= */
+
+  socket.on(
+    "call-rejected",
+    () => {
+
+      alert(
+        "Call rejected"
+      );
+
+    }
+  );
+
+
+  /* =======================================================
+     CALL ENDED
+  ======================================================= */
+
+  socket.on(
+    "call-ended",
+    () => {
+
+      endCall();
+
+    }
+  );
+
+
+  /* =======================================================
+     ICE CANDIDATE
+  ======================================================= */
+
+  socket.on(
+    "ice-candidate",
+    async candidate => {
+
+      if(!peer) return;
+
+
+      try {
+
+        await peer.addIceCandidate(
+          candidate
+        );
+
+      } catch(err) {
+
+        console.error(
+          "ICE Candidate Error:",
+          err
+        );
+
+      }
+
+    }
+  );
+
+
+  /* =======================================================
+     HISTORY CLEARED
+  ======================================================= */
+
+  socket.on(
+    "history cleared",
+    () => {
+
+      document.getElementById(
+        "messages"
+      ).innerHTML = "";
+
+
+      const button =
+        document.getElementById(
+          "resetJsonBinBtn"
+        );
+
+
+      if(button){
+
+        button.disabled = false;
+
+        button.innerText =
+          "🔄 Reset JSONBin";
+
+      }
+
+
+      alert(
+        "✅ JSONBin reset successfully.\n\n" +
+        "Chat history is now empty."
+      );
+
+    }
+  );
+
+
+  /* =======================================================
+     HISTORY CLEAR FAILED
+  ======================================================= */
+
+  socket.on(
+    "history clear failed",
+    data => {
+
+      const button =
+        document.getElementById(
+          "resetJsonBinBtn"
+        );
+
+
+      if(button){
+
+        button.disabled = false;
+
+        button.innerText =
+          "🔄 Reset JSONBin";
+
+      }
+
+
+      alert(
+        "❌ JSONBin reset failed.\n\n" +
+        (
+          data?.message ||
+          "Existing history was preserved."
+        )
+      );
+
+    }
+  );
+
+}
+
+
+/* =========================================================
+   CHAT
+========================================================= */
+
+function sendMessage(){
+
+  let text =
+    messageInput.value.trim();
+
+
+  if(!text) return;
+
+
+  socket.emit(
+    "chat message",
+    {
+      user: username,
+      text
+    }
+  );
+
+
+  messageInput.value = "";
+
+}
+
+
+/* =========================================================
+   TYPING
+========================================================= */
+
+messageInput.addEventListener(
+  "input",
+  () => {
+
+    if(socket){
+
+      socket.emit(
+        "typing",
+        username
       );
 
     }
 
-});
+  }
+);
 
-  socket.on("history cleared", () => {
-  document.getElementById("messages").innerHTML = "";
-  });
-}
 
-/* CHAT */
-function sendMessage(){
-  let text = messageInput.value.trim();
-  if(!text) return;
+messageInput.addEventListener(
+  "keypress",
+  e => {
 
-  socket.emit("chat message",{user:username,text});
-  messageInput.value="";
-}
+    if(e.key === "Enter"){
 
-messageInput.addEventListener("input", () => {
+      sendMessage();
 
-  socket.emit("typing", username);
+    }
 
-});
+  }
+);
 
-messageInput.addEventListener("keypress",e=>{
-  if(e.key==="Enter") sendMessage();
-});
+
+/* =========================================================
+   ADD MESSAGE
+========================================================= */
 
 function addMessage(msg){
 
-  let div=document.createElement("div");
+  let div =
+    document.createElement("div");
 
-  div.style.padding="10px";
-  div.style.margin="5px";
-  div.style.borderRadius="10px";
-  div.style.maxWidth="70%";
 
-  if(msg.user===username){
-    div.style.background="#dcf8c6";
-    div.style.marginLeft="auto";
-  } else {
-    div.style.background="white";
+  div.style.padding = "10px";
+
+  div.style.margin = "5px";
+
+  div.style.borderRadius = "10px";
+
+  div.style.maxWidth = "70%";
+
+
+  if(msg.user === username){
+
+    div.style.background =
+      "#dcf8c6";
+
+    div.style.marginLeft =
+      "auto";
+
+  }
+  else {
+
+    div.style.background =
+      "white";
+
   }
 
-  let time=new Date(msg.time).toLocaleString();
+
+  let time =
+    new Date(
+      msg.time
+    ).toLocaleString();
+
 
   div.innerHTML = `
     ${msg.text}
-    <div style="font-size:12px;color:gray;text-align:right;">
-      ${time} <span id="tick-${msg.id}">${msg.user===username?"✔":""}</span>
+
+    <div
+      style="
+        font-size:12px;
+        color:gray;
+        text-align:right;">
+      ${time}
+      <span id="tick-${msg.id}">
+        ${msg.user === username ? "✔" : ""}
+      </span>
     </div>
   `;
 
+
   messages.appendChild(div);
-  messages.scrollTop = messages.scrollHeight;
+
+  messages.scrollTop =
+    messages.scrollHeight;
+
 }
 
-/* CALL */
+
+/* =========================================================
+   RESET JSONBIN
+========================================================= */
+
+function resetJsonBin(){
+
+  if(!socket){
+
+    alert(
+      "❌ Not connected to server."
+    );
+
+    return;
+
+  }
+
+
+  const confirmed =
+    confirm(
+      "⚠️ RESET JSONBIN?\n\n" +
+      "This will permanently delete ALL chat messages.\n\n" +
+      "JSONBin will be reset to an empty array [].\n\n" +
+      "Continue?"
+    );
+
+
+  if(!confirmed) return;
+
+
+  const button =
+    document.getElementById(
+      "resetJsonBinBtn"
+    );
+
+
+  button.disabled = true;
+
+  button.innerText =
+    "⏳ Resetting...";
+
+
+  /*
+    Server will clear JSONBin.
+
+    The browser is NOT cleared here.
+
+    It will only be cleared after the server confirms
+    that JSONBin was successfully reset.
+  */
+
+  socket.emit(
+    "clear history"
+  );
+
+}
+
+
+/* =========================================================
+   CALL
+========================================================= */
+
 async function startCall(type){
 
   if(!otherUser){
-    alert("Other user not online");
+
+    alert(
+      "Other user not online"
+    );
+
     return;
+
   }
 
-  currentUser = otherUser;  // ✅ IMPORTANT FIX
-  callType = type;
 
-  if(type === 'video'){
-    localStream = await navigator.mediaDevices.getUserMedia({video: true, audio: true});
-} else {
-    localStream = await navigator.mediaDevices.getUserMedia({video: false, audio: true});
+  currentUser =
+    otherUser;
+
+  callType =
+    type;
+
+
+  if(type === "video"){
+
+    localStream =
+      await navigator.mediaDevices
+        .getUserMedia({
+          video: true,
+          audio: true
+        });
+
+  }
+  else {
+
+    localStream =
+      await navigator.mediaDevices
+        .getUserMedia({
+          video: false,
+          audio: true
+        });
+
   }
 
-  remoteStream = new MediaStream();
 
-  await createPeer();  // ✅ FIXED: added await
+  remoteStream =
+    new MediaStream();
 
-  localStream.getTracks().forEach(t=>peer.addTrack(t,localStream));
 
-  let offer = await peer.createOffer();
-  await peer.setLocalDescription(offer);
+  await createPeer();
 
-  socket.emit("call-user",{to:currentUser, offer, type});
+
+  localStream
+    .getTracks()
+    .forEach(
+      t => peer.addTrack(
+        t,
+        localStream
+      )
+    );
+
+
+  let offer =
+    await peer.createOffer();
+
+
+  await peer.setLocalDescription(
+    offer
+  );
+
+
+  socket.emit(
+    "call-user",
+    {
+      to: currentUser,
+      offer,
+      type
+    }
+  );
+
 
   showVideo();
+
 }
 
-async function acceptCall() {
-  console.log("1. acceptCall triggered");
 
-  document.getElementById("incomingCall").style.display = "none";
+/* =========================================================
+   ACCEPT CALL
+========================================================= */
+
+async function acceptCall(){
+
+  console.log(
+    "1. acceptCall triggered"
+  );
+
+
+  document.getElementById(
+    "incomingCall"
+  ).style.display = "none";
+
 
   try {
-    if (callType === "video") {
-      localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
-    } else {
-      localStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+
+    if(callType === "video"){
+
+      localStream =
+        await navigator.mediaDevices
+          .getUserMedia({
+            video: true,
+            audio: true
+          });
+
+    }
+    else {
+
+      localStream =
+        await navigator.mediaDevices
+          .getUserMedia({
+            audio: true
+          });
+
     }
 
-    console.log("2. got media");
 
-    remoteStream = new MediaStream();
+    console.log(
+      "2. got media"
+    );
 
-    await createPeer();  // ✅ FIXED: added await
 
-    console.log("3. peer created");
+    remoteStream =
+      new MediaStream();
 
-    localStream.getTracks().forEach(t => peer.addTrack(t, localStream));
 
-    await peer.setRemoteDescription(new RTCSessionDescription(incomingOffer));
+    await createPeer();
 
-    let answer = await peer.createAnswer();
-    await peer.setLocalDescription(answer);
 
-    socket.emit("call-accepted", {
-      to: currentUser,
-      answer: answer
-    });
+    console.log(
+      "3. peer created"
+    );
 
-    console.log("4. answer sent");
+
+    localStream
+      .getTracks()
+      .forEach(
+        t => peer.addTrack(
+          t,
+          localStream
+        )
+      );
+
+
+    await peer.setRemoteDescription(
+      new RTCSessionDescription(
+        incomingOffer
+      )
+    );
+
+
+    let answer =
+      await peer.createAnswer();
+
+
+    await peer.setLocalDescription(
+      answer
+    );
+
+
+    socket.emit(
+      "call-accepted",
+      {
+        to: currentUser,
+        answer: answer
+      }
+    );
+
+
+    console.log(
+      "4. answer sent"
+    );
+
 
     showVideo();
 
-  } catch (err) {
-    console.error("ACCEPT CALL ERROR:", err);
-  }
-}
 
-function rejectCall(){
-  document.getElementById("incomingCall").style.display="none";
-  socket.emit("call-rejected",{to:currentUser});
-}
-
-
-async function createPeer(){
- 
-  // Fetch fresh TURN credentials from Metered API Poonam
-  let iceServers;
-  try {
-    // ✅ FIXED: added fetch() call
-    const response = await fetch('https://connectlife.metered.live/api/v1/turn/credentials?apiKey=42668cff375214a62aa7ea140cbfe473d807');
-    iceServers = await response.json();
-	  console.log("✅ ICE servers loaded:", iceServers);
-   // console.log("✅ ICE servers fetched:", iceServers); by mahesh
   } catch(err) {
-    console.error("Failed to fetch ICE servers, using fallback:", err);
-    iceServers = [
-      {
-        urls: "stun:stun.relay.metered.ca:80",
-      },
-      {
-        urls: "turn:global.relay.metered.ca:80",
-        username: "9587c9164611467ffd7b9dbd",
-        credential: "q3/1+5G7wUDnzmXx",
-      },
-      {
-        urls: "turn:global.relay.metered.ca:80?transport=tcp",
-        username: "9587c9164611467ffd7b9dbd",
-        credential: "q3/1+5G7wUDnzmXx",
-      },
-      {
-        urls: "turn:global.relay.metered.ca:443",
-        username: "9587c9164611467ffd7b9dbd",
-        credential: "q3/1+5G7wUDnzmXx",
-      },
-      {
-        urls: "turns:global.relay.metered.ca:443?transport=tcp",
-        username: "9587c9164611467ffd7b9dbd",
-        credential: "q3/1+5G7wUDnzmXx",
-      },
-    ];
-  }
- 
-peer = new RTCPeerConnection({
-  iceTransportPolicy: "all",
-  iceServers: iceServers
-});
 
-setInterval(async () => {
-
-  if (!peer) return;
-
-  const stats = await peer.getStats();
-
-  stats.forEach(report => {
-
-    if (
-      report.type === "candidate-pair" &&
-      report.state === "succeeded"
-    ) {
-
-      console.log(
-    "Candidate Pair Type:",
-  report.localCandidateId,
-  report.remoteCandidateId
-      );
-
-    }
-
-  });
-
-}, 5000);
- 
-peer.onicecandidate = (event) => {
-
-  if(event.candidate){
-
-    console.log(
-      "ICE Candidate:",
-      event.candidate.candidate
+    console.error(
+      "ACCEPT CALL ERROR:",
+      err
     );
 
-    const candidate = event.candidate.candidate;
+  }
 
-    if(candidate.includes("relay")){
-      console.log("✅ TURN Candidate Generated");
+}
+
+
+/* =========================================================
+   REJECT CALL
+========================================================= */
+
+function rejectCall(){
+
+  document.getElementById(
+    "incomingCall"
+  ).style.display = "none";
+
+
+  socket.emit(
+    "call-rejected",
+    {
+      to: currentUser
     }
+  );
 
-    if(candidate.includes("srflx")){
-      console.log("✅ STUN Candidate Generated");
-    }
+}
 
-    if(candidate.includes("host")){
-      console.log("✅ Local Candidate Generated");
-    }
 
-    socket.emit("ice-candidate", {
-      to: currentUser,
-      candidate: event.candidate
-    });
+/* =========================================================
+   CREATE PEER
+========================================================= */
+
+async function createPeer(){
+
+  let iceServers;
+
+
+  try {
+
+    const response =
+      await fetch(
+        "https://connectlife.metered.live/api/v1/turn/credentials?apiKey=42668cff375214a62aa7ea140cbfe473d807"
+      );
+
+
+    iceServers =
+      await response.json();
+
+
+    console.log(
+      "✅ ICE servers loaded:",
+      iceServers
+    );
+
+
+  } catch(err) {
+
+    console.error(
+      "Failed to fetch ICE servers, using fallback:",
+      err
+    );
+
+
+    iceServers = [
+
+      {
+        urls:
+          "stun:stun.relay.metered.ca:80"
+      },
+
+      {
+        urls:
+          "turn:global.relay.metered.ca:80",
+
+        username:
+          "9587c9164611467ffd7b9dbd",
+
+        credential:
+          "q3/1+5G7wUDnzmXx"
+      },
+
+      {
+        urls:
+          "turn:global.relay.metered.ca:80?transport=tcp",
+
+        username:
+          "9587c9164611467ffd7b9dbd",
+
+        credential:
+          "q3/1+5G7wUDnzmXx"
+      },
+
+      {
+        urls:
+          "turn:global.relay.metered.ca:443",
+
+        username:
+          "9587c9164611467ffd7b9dbd",
+
+        credential:
+          "q3/1+5G7wUDnzmXx"
+      },
+
+      {
+        urls:
+          "turns:global.relay.metered.ca:443?transport=tcp",
+
+        username:
+          "9587c9164611467ffd7b9dbd",
+
+        credential:
+          "q3/1+5G7wUDnzmXx"
+      }
+
+    ];
 
   }
 
-};
 
-  peer.ontrack = (event) => {
-
-	  console.log(
-  "Remote Track Received:",
-  event.track.kind
-);
-    console.log("Got remote track:", event.track.kind);
-    remoteStream.addTrack(event.track);
-    remoteVideo.srcObject = remoteStream;
-	remoteVideo.muted = false;
-    remoteVideo.play().catch(function(err) {
-        console.log('Autoplay blocked, trying again:', err);
+  peer =
+    new RTCPeerConnection({
+      iceTransportPolicy: "all",
+      iceServers: iceServers
     });
-  };
 
- peer.oniceconnectionstatechange = () => {
 
-  console.log(
-    "ICE State:",
-    peer.iceConnectionState
+  setInterval(
+    async () => {
+
+      if(!peer) return;
+
+
+      const stats =
+        await peer.getStats();
+
+
+      stats.forEach(
+        report => {
+
+          if(
+            report.type ===
+              "candidate-pair" &&
+            report.state ===
+              "succeeded"
+          ){
+
+            console.log(
+              "Candidate Pair Type:",
+              report.localCandidateId,
+              report.remoteCandidateId
+            );
+
+          }
+
+        }
+      );
+
+    },
+    5000
   );
 
-};
 
-peer.onconnectionstatechange = () => {
+  peer.onicecandidate =
+    event => {
 
-  console.log(
-    "Connection State:",
-    peer.connectionState
-  );
+      if(event.candidate){
 
-};
-//below is added by Mahesh
-peer.onsignalingstatechange = () => {
+        console.log(
+          "ICE Candidate:",
+          event.candidate.candidate
+        );
 
-  console.log(
-    "Signaling State:",
-    peer.signalingState
-  );
 
-};
+        const candidate =
+          event.candidate.candidate;
+
+
+        if(candidate.includes("relay")){
+
+          console.log(
+            "✅ TURN Candidate Generated"
+          );
+
+        }
+
+
+        if(candidate.includes("srflx")){
+
+          console.log(
+            "✅ STUN Candidate Generated"
+          );
+
+        }
+
+
+        if(candidate.includes("host")){
+
+          console.log(
+            "✅ Local Candidate Generated"
+          );
+
+        }
+
+
+        socket.emit(
+          "ice-candidate",
+          {
+            to: currentUser,
+            candidate: event.candidate
+          }
+        );
+
+      }
+
+    };
+
+
+  peer.ontrack =
+    event => {
+
+      console.log(
+        "Remote Track Received:",
+        event.track.kind
+      );
+
+
+      remoteStream.addTrack(
+        event.track
+      );
+
+
+      remoteVideo.srcObject =
+        remoteStream;
+
+
+      remoteVideo.muted =
+        false;
+
+
+      remoteVideo.play()
+        .catch(
+          function(err){
+
+            console.log(
+              "Autoplay blocked, trying again:",
+              err
+            );
+
+          }
+        );
+
+    };
+
+
+  peer.oniceconnectionstatechange =
+    () => {
+
+      console.log(
+        "ICE State:",
+        peer.iceConnectionState
+      );
+
+    };
+
+
+  peer.onconnectionstatechange =
+    () => {
+
+      console.log(
+        "Connection State:",
+        peer.connectionState
+      );
+
+    };
+
+
+  peer.onsignalingstatechange =
+    () => {
+
+      console.log(
+        "Signaling State:",
+        peer.signalingState
+      );
+
+    };
+
 }
-	
+
+
+/* =========================================================
+   SHOW VIDEO
+========================================================= */
+
 function showVideo(){
 
-  videoScreen.style.display = "block";
+  videoScreen.style.display =
+    "block";
 
-  // ✅ ensure remote audio is NOT muted
-  remoteVideo.muted = false;
-  remoteVideo.volume = 1.0;
 
-  // local video
+  remoteVideo.muted =
+    false;
+
+  remoteVideo.volume =
+    1.0;
+
+
   if(localStream){
-    localVideo.srcObject = localStream;
+
+    localVideo.srcObject =
+      localStream;
+
   }
+
 }
+
+
+/* =========================================================
+   END CALL
+========================================================= */
 
 function endCall(){
 
   if(socket && currentUser){
-    socket.emit("call-ended",{to:currentUser});
+
+    socket.emit(
+      "call-ended",
+      {
+        to: currentUser
+      }
+    );
+
   }
+
 
   if(peer){
+
     peer.close();
-    peer=null;
+
+    peer = null;
+
   }
+
 
   if(localStream){
-    localStream.getTracks().forEach(t=>t.stop());
-    localStream=null;
+
+    localStream
+      .getTracks()
+      .forEach(
+        t => t.stop()
+      );
+
+    localStream = null;
+
   }
 
-  remoteVideo.srcObject=null;
-  localVideo.srcObject=null;
 
-  videoScreen.style.display="none";
-  chat.style.display="flex";
-}
+  remoteVideo.srcObject =
+    null;
 
-// LOGIN BUTTON
-document.getElementById("loginBtn").addEventListener("click", login);
+  localVideo.srcObject =
+    null;
 
 
+  videoScreen.style.display =
+    "none";
 
-function toggleMute() {
-    if (!localStream) return;
-    var audioTrack = localStream.getAudioTracks()[0];
-    if (audioTrack) {
-        audioTrack.enabled = !audioTrack.enabled;
-        // Update button text
-        document.querySelector('.controlBtn[onclick="toggleMute()"]').innerText = 
-            audioTrack.enabled ? '🔇' : '🔈';
-        console.log('Mic:', audioTrack.enabled ? 'ON' : 'OFF');
-    }
-}
+  chat.style.display =
+    "flex";
 
-function toggleCamera() {
-    if (!localStream) return;
-    var videoTrack = localStream.getVideoTracks()[0];
-    if (videoTrack) {
-        videoTrack.enabled = !videoTrack.enabled;
-        document.querySelector('.controlBtn[onclick="toggleCamera()"]').innerText = 
-            videoTrack.enabled ? '🎥' : '📷';
-        console.log('Camera:', videoTrack.enabled ? 'ON' : 'OFF');
-    }
-}
-
-function startVoiceTyping() {
-
-    const SpeechRecognition =
-        window.SpeechRecognition ||
-        window.webkitSpeechRecognition;
-
-    if (!SpeechRecognition) {
-        alert("Voice typing is not supported in this browser.");
-        return;
-    }
-
-    const recognition = new SpeechRecognition();
-
-    recognition.lang = "en-IN";      // Indian English
-	recognition.lang = "mr-IN";      // Indian English
-	
-    recognition.interimResults = true;
-    recognition.continuous = false;
-
-    recognition.onstart = () => {
-        console.log("🎤 Listening...");
-    };
-
-    recognition.onresult = (event) => {
-
-        let transcript = "";
-
-        for (let i = event.resultIndex; i < event.results.length; i++) {
-            transcript += event.results[i][0].transcript;
-        }
-
-        document.getElementById("messageInput").value = transcript;
-
-    };
-
-    recognition.onerror = (event) => {
-        console.error("Voice typing error:", event.error);
-    };
-
-    recognition.onend = () => {
-        console.log("🎤 Voice typing finished");
-    };
-
-    recognition.start();
 }
 
 
-	
-function clearChat() {
-  if (confirm("Delete all chat history?")) {
-    socket.emit("clear history");
-    document.getElementById("messages").innerHTML = "";
+/* =========================================================
+   LOGIN BUTTON
+========================================================= */
+
+document
+  .getElementById("loginBtn")
+  .addEventListener(
+    "click",
+    login
+  );
+
+
+/* =========================================================
+   MUTE
+========================================================= */
+
+function toggleMute(){
+
+  if(!localStream) return;
+
+
+  var audioTrack =
+    localStream.getAudioTracks()[0];
+
+
+  if(audioTrack){
+
+    audioTrack.enabled =
+      !audioTrack.enabled;
+
+
+    document
+      .querySelector(
+        '.controlBtn[onclick="toggleMute()"]'
+      )
+      .innerText =
+        audioTrack.enabled
+          ? "🔇"
+          : "🔈";
+
+
+    console.log(
+      "Mic:",
+      audioTrack.enabled
+        ? "ON"
+        : "OFF"
+    );
+
   }
+
+}
+
+
+/* =========================================================
+   CAMERA
+========================================================= */
+
+function toggleCamera(){
+
+  if(!localStream) return;
+
+
+  var videoTrack =
+    localStream.getVideoTracks()[0];
+
+
+  if(videoTrack){
+
+    videoTrack.enabled =
+      !videoTrack.enabled;
+
+
+    document
+      .querySelector(
+        '.controlBtn[onclick="toggleCamera()"]'
+      )
+      .innerText =
+        videoTrack.enabled
+          ? "🎥"
+          : "📷";
+
+
+    console.log(
+      "Camera:",
+      videoTrack.enabled
+        ? "ON"
+        : "OFF"
+    );
+
+  }
+
+}
+
+
+/* =========================================================
+   VOICE TYPING
+========================================================= */
+
+function startVoiceTyping(){
+
+  const SpeechRecognition =
+    window.SpeechRecognition ||
+    window.webkitSpeechRecognition;
+
+
+  if(!SpeechRecognition){
+
+    alert(
+      "Voice typing is not supported in this browser."
+    );
+
+    return;
+
+  }
+
+
+  const recognition =
+    new SpeechRecognition();
+
+
+  /*
+    Keep your original Marathi setting.
+  */
+
+  recognition.lang =
+    "mr-IN";
+
+
+  recognition.interimResults =
+    true;
+
+  recognition.continuous =
+    false;
+
+
+  recognition.onstart =
+    () => {
+
+      console.log(
+        "🎤 Listening..."
+      );
+
+    };
+
+
+  recognition.onresult =
+    event => {
+
+      let transcript = "";
+
+
+      for(
+        let i = event.resultIndex;
+        i < event.results.length;
+        i++
+      ){
+
+        transcript +=
+          event.results[i][0].transcript;
+
+      }
+
+
+      document
+        .getElementById(
+          "messageInput"
+        )
+        .value =
+        transcript;
+
+    };
+
+
+  recognition.onerror =
+    event => {
+
+      console.error(
+        "Voice typing error:",
+        event.error
+      );
+
+    };
+
+
+  recognition.onend =
+    () => {
+
+      console.log(
+        "🎤 Voice typing finished"
+      );
+
+    };
+
+
+  recognition.start();
+
 }
 
 </script>
 
 </body>
 </html>
+
