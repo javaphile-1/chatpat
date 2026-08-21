@@ -61,7 +61,7 @@ async function loadMessages() {
     } else {
 
       console.error(
-        "❌ Failed to load chat history:",
+        "❌ Failed to load chat history: ",
         error.message
       );
 
