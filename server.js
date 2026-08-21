@@ -13,7 +13,7 @@ app.use(express.static("public"));
 
 // ✅ JSONBin.io config
 const JSONBIN_API_KEY = "$2a$10$5do01ZQU7njxq4lYUjOilOODksveT8eR56.yI9SqpYnpg04vdc/xe";
-const BIN_ID = "6a8877f8f5f4af5e2931e768";
+const BIN_ID = "6a88792cf5f4af5e2931eb69";
 
 async function deleteBin() {
   try {
