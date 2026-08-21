@@ -88,9 +88,7 @@ async function loadMessages() {
 
     try {
 
-      console.log(
-        `📦 Loading messages from JSONBin (attempt ${attempt}/${MAX_ATTEMPTS})...`
-      );
+    
 
       const response = await fetch(
         `https://api.jsonbin.io/v3/b/${BIN_ID}/latest`,
