@@ -90,14 +90,14 @@ async function loadMessages() {
     
 
       const response = await fetch(
-        `https://api.jsonbin.io/v3/b/${BIN_ID}/latest`,
-        {
-          method: "GET",
-          headers: {
-            "X-Master-Key": JSONBIN_API_KEY
-          }
-        }
-      );
+  `https://api.jsonbin.io/v3/b/${BIN_ID}/latest`,
+  {
+    method: "GET",
+    headers: {
+      "X-Master-Key": JSONBIN_API_KEY
+    }
+  }
+);
 
       console.log(
         `📦 JSONBin HTTP status: ${response.status}`
