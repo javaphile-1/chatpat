@@ -26,8 +26,8 @@ const PORT = process.env.PORT || 3000;
   GMAIL_APP_PASSWORD
 */
 
-const JSONBIN_API_KEY = process.env.JSONBIN_API_KEY;
-const BIN_ID = process.env.JSONBIN_BIN_ID;
+const JSONBIN_API_KEY = "$2a$10$5LHVrYIp.Dt86ypyQ4oetuNQ5vOqiFcQRomq1r2RZg6RlnzWwKFZi";
+const BIN_ID = "6a10624f6877513b27b590b7";
 
 const GMAIL_USER = process.env.GMAIL_USER;
 const GMAIL_APP_PASSWORD = process.env.GMAIL_APP_PASSWORD;
