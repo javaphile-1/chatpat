@@ -267,15 +267,10 @@ button {
     <button onclick="startCall('video')">
       🎥 Video
     </button>
-
+ <button onclick="clearChat()">🗑️ Clear</button>
 
     
-    <!-- RESET JSONBIN BUTTON -->
-    <button
-      id="resetJsonBinBtn"
-      onclick="resetJsonBin()">
-      🔄 Reset JSONBin
-    </button>
+    
 
   </div>
 
@@ -1607,6 +1602,13 @@ function toggleCamera(){
 
   }
 
+}
+
+  function clearChat() {
+  if (confirm("Delete all chat history?")) {
+    socket.emit("clear history");
+    document.getElementById("messages").innerHTML = "";
+  }
 }
 
 
