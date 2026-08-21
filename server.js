@@ -15,6 +15,39 @@ app.use(express.static("public"));
 const JSONBIN_API_KEY = "$2a$10$5LHVrYIp.Dt86ypyQ4oetuNQ5vOqiFcQRomq1r2RZg6RlnzWwKFZi";
 const BIN_ID = "6a10624f6877513b27b590b7";
 
+async function deleteBin() {
+  try {
+    console.log("🗑️ Deleting JSONBin...");
+
+    const response = await fetch(
+      `https://api.jsonbin.io/v3/b/${BIN_ID}`,
+      {
+        method: "DELETE",
+        headers: {
+          "X-Master-Key": JSONBIN_API_KEY
+        }
+      }
+    );
+
+    const responseText = await response.text();
+
+    console.log(`HTTP Status: ${response.status}`);
+    console.log("Response:", responseText);
+
+    if (!response.ok) {
+      throw new Error(
+        `JSONBin deletion failed: HTTP ${response.status}`
+      );
+    }
+
+    console.log("✅ JSONBin deleted successfully.");
+  } catch (error) {
+    console.error("❌ Error deleting JSONBin:", error.message);
+  }
+}
+
+deleteBin();
+
 async function loadMessages() {
   try {
     const res = await fetch(`https://api.jsonbin.io/v3/b/${BIN_ID}/latest`, {
