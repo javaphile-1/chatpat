@@ -1,3 +1,4 @@
+```js
 const express = require("express");
 const http = require("http");
 const { Server } = require("socket.io");
@@ -17,8 +18,7 @@ app.use(express.static("public"));
 const PORT = process.env.PORT || 3000;
 
 /*
-  IMPORTANT:
-  Add these in Render -> Environment Variables
+  Render Environment Variables:
 
   JSONBIN_API_KEY
   JSONBIN_BIN_ID
@@ -58,8 +58,11 @@ const MESSAGE_LIMIT = 100;
 let messageHistory = [];
 
 /*
-  This becomes true ONLY after JSONBin successfully loads.
-  We never save before that.
+  IMPORTANT:
+
+  This remains false until JSONBin has successfully loaded.
+
+  The server will not save anything before that.
 */
 let loadedSuccessfully = false;
 
@@ -67,13 +70,8 @@ let loadedSuccessfully = false;
 /*
   Save queue.
 
-  This prevents multiple messages from doing:
-
-      save A
-      save B
-      save C
-
-  simultaneously and accidentally overwriting each other.
+  Prevents simultaneous PUT requests from overwriting
+  each other.
 */
 let saveQueue = Promise.resolve();
 
@@ -105,32 +103,68 @@ async function loadMessages() {
       );
 
       console.log(
-        `📦 JSONBin load response: HTTP ${response.status}`
+        `📦 JSONBin HTTP status: ${response.status}`
       );
+
+      const responseText = await response.text();
 
       if (!response.ok) {
 
-        const errorText = await response.text();
-
         throw new Error(
-          `HTTP ${response.status}: ${errorText}`
+          `HTTP ${response.status}: ${responseText}`
         );
       }
 
-      const data = await response.json();
+      let data;
 
-      console.log("📦 JSONBin response received");
+      try {
 
-      const record = data.record;
+        data = JSON.parse(responseText);
 
-console.log(
-  `?? JSONBin currently contains ${Array.isArray(record) ? record.length : "INVALID"} messages`
-);
+      } catch (parseError) {
+
+        throw new Error(
+          "JSONBin returned invalid JSON."
+        );
+      }
 
 
       /*
-        Your application expects the JSONBin record
-        to be an array of messages.
+        Make sure JSONBin returned a record.
+      */
+
+      if (!data || !Object.prototype.hasOwnProperty.call(data, "record")) {
+
+        throw new Error(
+          "JSONBin response does not contain a record."
+        );
+      }
+
+
+      const record = data.record;
+
+
+      console.log(
+        `📦 JSONBin record type: ${
+          Array.isArray(record)
+            ? "array"
+            : typeof record
+        }`
+      );
+
+
+      console.log(
+        `📦 JSONBin currently contains ${
+          Array.isArray(record)
+            ? record.length
+            : "INVALID"
+        } messages`
+      );
+
+
+      /*
+        Your chat application expects the JSONBin
+        record to ALWAYS be an array.
       */
 
       if (!Array.isArray(record)) {
@@ -140,15 +174,20 @@ console.log(
         );
       }
 
+
       /*
-        SUCCESS
+        SUCCESS.
+
+        Only now is saving allowed.
       */
 
       loadedSuccessfully = true;
 
+
       console.log(
-        `✅ Messages loaded successfully: ${record.length} messages`
+        `✅ JSONBin history loaded successfully: ${record.length} messages`
       );
+
 
       return record;
 
@@ -158,6 +197,7 @@ console.log(
         `❌ JSONBin load attempt ${attempt} failed:`,
         error.message
       );
+
 
       if (attempt < MAX_ATTEMPTS) {
 
@@ -170,31 +210,26 @@ console.log(
         await new Promise(resolve =>
           setTimeout(resolve, delay)
         );
+
       }
     }
   }
 
+
   /*
     VERY IMPORTANT:
 
-    Do NOT start the server with an empty history.
-
-    Otherwise a temporary JSONBin failure could make the
-    application look like all messages disappeared.
+    Do not allow the server to start with an
+    unknown/empty database state.
   */
 
   loadedSuccessfully = false;
+
 
   throw new Error(
     "Unable to load chat history from JSONBin after all attempts."
   );
 }
-
-
-/* =========================================================
-   JSONBIN - ACTUAL SAVE
-========================================================= */
-
 
 
 /* =========================================================
@@ -204,33 +239,48 @@ console.log(
 function queueSave() {
 
   if (!loadedSuccessfully) {
+
     return Promise.reject(
-      new Error("JSONBin not ready")
+      new Error("JSONBin is not ready.")
     );
   }
 
+
   saveQueue = saveQueue
     .catch(() => {
-      // Recover queue after previous save failure
+      /*
+        Recover queue after a previous save failure.
+      */
     })
     .then(() => {
+
       return saveMessagesInternal();
+
     });
+
 
   return saveQueue;
 }
 
+
+/* =========================================================
+   JSONBIN - ACTUAL SAVE
+========================================================= */
+
 async function saveMessagesInternal() {
 
   if (!loadedSuccessfully) {
+
     throw new Error(
-      "Save blocked because JSONBin initial load was not successful."
+      "Save blocked because JSONBin has not been loaded successfully."
     );
   }
 
+
   console.log(
-    `?? Saving ${messageHistory.length} messages to JSONBin...`
+    `💾 Saving ${messageHistory.length} messages to JSONBin...`
   );
+
 
   const response = await fetch(
     `https://api.jsonbin.io/v3/b/${BIN_ID}`,
@@ -246,31 +296,36 @@ async function saveMessagesInternal() {
     }
   );
 
+
   const responseText = await response.text();
 
+
   console.log(
-    `?? JSONBin save response: HTTP ${response.status}`
+    `💾 JSONBin save response: HTTP ${response.status}`
   );
+
 
   if (!response.ok) {
 
     console.error(
-      "? JSONBin response:",
+      "❌ JSONBin response:",
       responseText
     );
+
 
     throw new Error(
       `JSONBin save failed: HTTP ${response.status}`
     );
   }
 
+
   console.log(
-    `? JSONBin saved ${messageHistory.length} messages`
+    `✅ JSONBin saved successfully: ${messageHistory.length} messages`
   );
+
 
   return true;
 }
-
 
 
 /* =========================================================
@@ -290,7 +345,9 @@ if (GMAIL_USER && GMAIL_APP_PASSWORD) {
     }
   });
 
-  console.log("📧 Gmail notification system enabled.");
+  console.log(
+    "📧 Gmail notification system enabled."
+  );
 
 } else {
 
@@ -370,7 +427,6 @@ function sendOnlineNotification(username) {
       `Logged in and Grab the offer.\n\n` +
       `User: ${username}\n` +
       `Time: ${new Date().toLocaleString()}`
-
   };
 
 
@@ -444,19 +500,12 @@ function initializeSocketEvents() {
 
       socket.username = username;
 
-      /*
-        If another browser is already logged in with
-        the same username, the newest connection replaces it.
-      */
-
       users[username] = socket.id;
 
 
       /*
-        IMPORTANT:
-
-        At this point JSONBin has already been loaded because
-        the server does not start until loadMessages() succeeds.
+        JSONBin has already been successfully loaded
+        before Socket.IO was initialized.
       */
 
       socket.emit(
@@ -476,10 +525,6 @@ function initializeSocketEvents() {
       );
 
 
-      /*
-        Send email notification.
-      */
-
       sendOnlineNotification(username);
 
     });
@@ -498,14 +543,6 @@ function initializeSocketEvents() {
 
 
       if (socket.username) {
-
-        /*
-          Only remove this username if this socket is still
-          the active socket for that username.
-
-          This prevents an older tab from deleting a newer
-          login.
-        */
 
         if (
           users[socket.username] === socket.id
@@ -559,10 +596,7 @@ function initializeSocketEvents() {
 
 
           /*
-            Create a stronger unique message ID.
-
-            Date.now() alone can theoretically collide if
-            multiple messages arrive within the same millisecond.
+            Strong unique message ID.
           */
 
           msg.id = crypto.randomUUID();
@@ -603,20 +637,14 @@ function initializeSocketEvents() {
 
 
           /*
-            IMPORTANT:
-
             Save BEFORE broadcasting.
-
-            This means if the server crashes immediately after
-            receiving the message, the message has already been
-            sent to JSONBin.
           */
 
           await queueSave();
 
 
           /*
-            Now broadcast.
+            Broadcast only after successful save.
           */
 
           io.emit(
@@ -639,7 +667,7 @@ function initializeSocketEvents() {
 
 
     /* =====================================================
-       CLEAR HISTORY
+       RESET JSONBIN / CLEAR HISTORY
     ===================================================== */
 
     socket.on(
@@ -659,29 +687,54 @@ function initializeSocketEvents() {
 
 
           console.log(
-            `🗑️ Chat history clear requested by ${socket.username}`
+            `🗑️ JSONBin reset requested by ${socket.username}`
           );
 
 
           /*
-            Clear memory.
+            Keep the old history in case the JSONBin
+            save fails.
+          */
+
+          const oldHistory = messageHistory;
+
+
+          /*
+            Temporarily clear memory.
           */
 
           messageHistory = [];
 
 
+          try {
+
+            /*
+              This writes [] to JSONBin.
+
+              IMPORTANT:
+              This is the ONLY intentional operation
+              that clears JSONBin.
+            */
+
+            await queueSave();
+
+          } catch (saveError) {
+
+            /*
+              JSONBin save failed.
+
+              Restore previous history.
+            */
+
+            messageHistory = oldHistory;
+
+            throw saveError;
+          }
+
+
           /*
-            Save empty array to JSONBin.
-
-            Because queueSave() is used, this clear operation
-            waits behind any previous message save.
-          */
-
-          await queueSave();
-
-
-          /*
-            Only tell clients after JSONBin save completed.
+            Only notify browsers AFTER JSONBin
+            successfully contains [].
           */
 
           io.emit(
@@ -690,15 +743,29 @@ function initializeSocketEvents() {
 
 
           console.log(
-            "✅ Chat history cleared successfully."
+            "✅ JSONBin reset successfully. History is now empty."
           );
 
 
         } catch (error) {
 
           console.error(
-            "❌ Failed to clear chat history:",
+            "❌ Failed to reset JSONBin:",
             error.message
+          );
+
+
+          /*
+            Tell the requesting browser that
+            the reset failed.
+          */
+
+          socket.emit(
+            "history clear failed",
+            {
+              message:
+                "JSONBin could not be reset. Existing history was preserved."
+            }
           );
 
         }
@@ -972,34 +1039,15 @@ async function startServer() {
   console.log("");
 
 
-  /*
-    CRITICAL FIX:
-
-    DO NOT start listening for users until JSONBin
-    history has successfully loaded.
-
-    Previously your application did:
-
-        messageHistory = [];
-
-        loadMessages();
-
-        server.listen();
-
-    That created a race condition.
-
-    Now:
-
-        load JSONBin
-             ↓
-        verify history
-             ↓
-        initialize Socket.IO
-             ↓
-        start server
-  */
-
   try {
+
+    /*
+      IMPORTANT:
+
+      First load JSONBin.
+
+      Nothing else starts until this succeeds.
+    */
 
     const loadedMessages =
       await loadMessages();
@@ -1018,13 +1066,21 @@ async function startServer() {
     }
 
 
+    /*
+      Restore memory from JSONBin.
+    */
+
     messageHistory =
       loadedMessages;
 
 
     console.log("");
     console.log(
-      `✅ HISTORY READY: ${messageHistory.length} messages`
+      `✅ HISTORY RESTORED: ${messageHistory.length} messages`
+    );
+    console.log("");
+    console.log(
+      "🛡️ Startup will NOT overwrite JSONBin."
     );
     console.log("");
 
@@ -1050,6 +1106,7 @@ async function startServer() {
     );
 
     console.error("");
+
     console.error(
       "⚠️ JSONBin history could not be loaded."
     );
@@ -1059,16 +1116,13 @@ async function startServer() {
     );
 
     console.error(
-      "⚠️ This protects your existing chat data."
+      "⚠️ Existing JSONBin data will NOT be overwritten."
     );
 
     console.error("");
 
-
     /*
-      Exit so Render can restart the service.
-      We never run the chat server with an unknown
-      or empty database state.
+      Render can restart the service.
     */
 
     process.exit(1);
@@ -1077,7 +1131,8 @@ async function startServer() {
 
 
   /*
-    Only initialize Socket.IO after history is ready.
+    Only initialize Socket.IO AFTER
+    JSONBin history has successfully loaded.
   */
 
   initializeSocketEvents();
@@ -1102,11 +1157,15 @@ async function startServer() {
       );
 
       console.log(
-        `✅ Chat history: ${messageHistory.length} messages`
+        `✅ RESTORED MESSAGES: ${messageHistory.length}`
       );
 
       console.log(
         "✅ JSONBin persistence: ENABLED"
+      );
+
+      console.log(
+        "🛡️ Startup overwrite protection: ENABLED"
       );
 
       console.log(
@@ -1137,3 +1196,4 @@ startServer().catch(
 
   }
 );
+```
