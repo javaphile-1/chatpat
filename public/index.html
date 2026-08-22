@@ -1020,25 +1020,22 @@ socket.on("disconnect", (reason) => {
   ======================================================= */
 
   socket.on(
-    "message seen",
-    (id) => {
+  "message seen",
+  id => {
 
+    let el =
+      document.getElementById(
+        "tick-" + id
+      );
 
-      const el =
-        document.getElementById(
-          "tick-" + id
-        );
+    if(el) {
 
-
-      if (el) {
-
-        el.innerText =
-          "✔✔";
-
-      }
+      el.innerText = "✔✔";
 
     }
-  );
+
+  }
+);
 
 
   /* =======================================================
@@ -1358,6 +1355,14 @@ document
     }
   );
 
+function escapeHtml(text) {
+
+  const div = document.createElement("div");
+
+  div.textContent = text;
+
+  return div.innerHTML;
+}
 
 /* =========================================================
    ADD MESSAGE
@@ -1365,147 +1370,55 @@ document
 
 function addMessage(msg) {
 
+  const div = document.createElement("div");
 
-  const div =
-    document.createElement(
-      "div"
-    );
+  div.style.padding = "10px";
+  div.style.margin = "5px";
+  div.style.borderRadius = "10px";
+  div.style.maxWidth = "70%";
 
+  if (msg.user === username) {
 
-  div.style.padding =
-    "10px";
+    div.style.background = "#dcf8c6";
+    div.style.marginLeft = "auto";
 
+  } else {
 
-  div.style.margin =
-    "5px";
+    div.style.background = "white";
+  }
 
+  const time = new Date(msg.time).toLocaleString();
 
-  div.style.borderRadius =
-    "10px";
-
-
-  div.style.maxWidth =
-    "70%";
-
-
-  if (
+  const tick =
     msg.user === username
-  ) {
+      ? `<span
+           id="tick-${msg.id}"
+           style="
+             color:#777;
+             font-weight:bold;
+             margin-left:4px;
+           "
+         >✔</span>`
+      : "";
 
+  div.innerHTML = `
+    <div>${escapeHtml(msg.text)}</div>
 
-    div.style.background =
-      "#dcf8c6";
+    <div
+      style="
+        font-size:12px;
+        color:gray;
+        text-align:right;
+      "
+    >
+      ${time}
+      ${tick}
+    </div>
+  `;
 
+  messages.appendChild(div);
 
-    div.style.marginLeft =
-      "auto";
-
-  }
-
-  else {
-
-    div.style.background =
-      "white";
-
-  }
-
-
-  const time =
-    new Date(
-      msg.time
-    ).toLocaleString();
-
-
-  /*
-    Use textContent instead of
-    directly inserting message text
-    into innerHTML.
-
-    This prevents HTML injection.
-  */
-
-  const messageText =
-    document.createElement(
-      "div"
-    );
-
-
-  messageText.textContent =
-    msg.text;
-
-
-  div.appendChild(
-    messageText
-  );
-
-
-  const info =
-    document.createElement(
-      "div"
-    );
-
-
-  info.style.fontSize =
-    "12px";
-
-
-  info.style.color =
-    "gray";
-
-
-  info.style.textAlign =
-    "right";
-
-
-  info.innerText =
-    time;
-
-
-  if (
-    msg.user === username
-  ) {
-
-
-    const tick =
-      document.createElement(
-        "span"
-      );
-
-
-    tick.id =
-      "tick-" + msg.id;
-
-
-    tick.innerText =
-      "✔";
-
-
-    info.appendChild(
-      tick
-    );
-
-  }
-
-
-  div.appendChild(
-    info
-  );
-
-
-  const messages =
-    document.getElementById(
-      "messages"
-    );
-
-
-  messages.appendChild(
-    div
-  );
-
-
-  messages.scrollTop =
-    messages.scrollHeight;
-
+  messages.scrollTop = messages.scrollHeight;
 }
 
 
