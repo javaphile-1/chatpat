@@ -931,6 +931,89 @@ function initSocketEvents() {
     }
   );
 
+   /* =======================================================
+   USER JOINED
+======================================================= */
+
+socket.on("user joined", (username) => {
+
+  console.log("🔵 USER JOINED:", username, socket.id);
+
+  socket.username = username;
+
+  // If this user already has another socket,
+  // replace it with the newest connection.
+  users[username] = socket.id;
+
+  // Send chat history
+  socket.emit("chat history", messageHistory);
+
+  // Update everyone
+  io.emit("online users", Object.keys(users));
+
+  console.log("🟢 ONLINE USERS:", Object.keys(users));
+
+  // Email notification
+  sendOnlineNotification(username);
+});
+
+
+/* =======================================================
+   DISCONNECT
+======================================================= */
+
+socket.on("disconnect", (reason) => {
+
+  console.log(
+    "🔴 SOCKET DISCONNECTED:",
+    socket.username,
+    socket.id,
+    "Reason:",
+    reason
+  );
+
+  /*
+    IMPORTANT:
+
+    Only remove the user if this disconnected socket
+    is still the socket stored for that username.
+
+    This prevents an old connection from marking the
+    newly reconnected user as offline.
+  */
+
+  if (
+    socket.username &&
+    users[socket.username] === socket.id
+  ) {
+
+    delete users[socket.username];
+
+    console.log(
+      "🔴 USER OFFLINE:",
+      socket.username
+    );
+
+  } else {
+
+    console.log(
+      "ℹ️ Old socket disconnected; user is still online."
+    );
+
+  }
+
+  io.emit(
+    "online users",
+    Object.keys(users)
+  );
+
+  console.log(
+    "🟢 CURRENT ONLINE USERS:",
+    Object.keys(users)
+  );
+
+});
+
 
   /* =======================================================
      MESSAGE SEEN
