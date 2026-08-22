@@ -4,7 +4,6 @@ const { Server } = require("socket.io");
 const nodemailer = require("nodemailer");
 const { Pool } = require("pg");
 
-
 const app = express();
 const server = http.createServer(app);
 const io = new Server(server);
@@ -17,12 +16,12 @@ app.use(express.static("public"));
 ========================================================= */
 
 /*
-  PASTE YOUR SUPABASE DATABASE URL HERE.
+  Paste your Supabase Session Pooler DATABASE URL here.
 
   Example:
 
   const DATABASE_URL =
-    "postgresql://postgres.xxxxx:YOUR_PASSWORD@aws-0-xxxxx.pooler.supabase.com:5432/postgres";
+    "postgresql://postgres.xxxxx:YOUR_PASSWORD@aws-0-ap-south-1.pooler.supabase.com:5432/postgres";
 */
 
 const DATABASE_URL =
@@ -30,11 +29,14 @@ const DATABASE_URL =
 
 
 const pool = new Pool({
-  connectionString: DATABASE_URL,
+
+  connectionString:
+    DATABASE_URL,
 
   ssl: {
     rejectUnauthorized: false
   }
+
 });
 
 
@@ -46,9 +48,10 @@ async function testDatabase() {
 
   try {
 
-    const result = await pool.query(
-      "SELECT NOW()"
-    );
+    const result =
+      await pool.query(
+        "SELECT NOW()"
+      );
 
     console.log(
       "✅ Supabase PostgreSQL connected"
@@ -82,22 +85,23 @@ async function loadMessages() {
 
   try {
 
-    const result = await pool.query(`
-      SELECT
-        id,
-        username AS user,
-        message AS text,
-        created_at AS time
-      FROM chat_messages
-      ORDER BY created_at DESC
-      LIMIT 15
-    `);
+    const result =
+      await pool.query(`
+        SELECT
+          id,
+          username AS user,
+          message AS text,
+          created_at AS time
+        FROM chat_messages
+        ORDER BY created_at DESC
+        LIMIT 15
+      `);
 
 
     /*
-      Database returns newest first.
+      Database gives newest messages first.
 
-      Reverse it so the oldest message
+      Reverse them so the oldest
       appears first in the chat.
     */
 
@@ -128,23 +132,24 @@ async function saveMessage(msg) {
 
   try {
 
-    const result = await pool.query(
-      `
-      INSERT INTO chat_messages
-        (username, message)
-      VALUES
-        ($1, $2)
-      RETURNING
-        id,
-        username AS user,
-        message AS text,
-        created_at AS time
-      `,
-      [
-        msg.user,
-        msg.text
-      ]
-    );
+    const result =
+      await pool.query(
+        `
+        INSERT INTO chat_messages
+          (username, message)
+        VALUES
+          ($1, $2)
+        RETURNING
+          id,
+          username AS user,
+          message AS text,
+          created_at AS time
+        `,
+        [
+          msg.user,
+          msg.text
+        ]
+      );
 
 
     return result.rows[0];
@@ -167,20 +172,28 @@ async function saveMessage(msg) {
 
 
 /* =========================================================
-   CLEAR CHAT HISTORY
+   CLEAR ALL CHAT HISTORY
 ========================================================= */
 
 async function clearMessages() {
 
   try {
 
+    /*
+      Delete ALL messages from table.
+
+      RESTART IDENTITY resets the id counter.
+    */
+
     await pool.query(
-      "DELETE FROM chat_messages"
+      "TRUNCATE TABLE chat_messages RESTART IDENTITY"
     );
+
 
     console.log(
       "🗑️ All chat history deleted from Supabase"
     );
+
 
     return true;
 
@@ -194,6 +207,7 @@ async function clearMessages() {
       error.message
     );
 
+
     return false;
 
   }
@@ -205,19 +219,22 @@ async function clearMessages() {
    GMAIL SETUP
 ========================================================= */
 
-const transporter = nodemailer.createTransport({
+const transporter =
+  nodemailer.createTransport({
 
-  service: "gmail",
+    service: "gmail",
 
-  auth: {
+    auth: {
 
-    user: "YOUR_GMAIL@gmail.com",
+      user:
+        "YOUR_GMAIL@gmail.com",
 
-    pass: "YOUR_GMAIL_APP_PASSWORD"
+      pass:
+        "YOUR_GMAIL_APP_PASSWORD"
 
-  }
+    }
 
-});
+  });
 
 
 /* =========================================================
@@ -411,8 +428,8 @@ io.on(
 
 
         /*
-          Only delete this user if
-          this socket is still active.
+          Only delete this username
+          if this socket is still active.
         */
 
         if (
@@ -420,7 +437,9 @@ io.on(
           users[socket.username] === socket.id
         ) {
 
-          delete users[socket.username];
+          delete users[
+            socket.username
+          ];
 
         }
 
@@ -458,7 +477,7 @@ io.on(
 
 
         /*
-          Save to Supabase.
+          Save message to Supabase.
         */
 
         const savedMessage =
@@ -474,8 +493,7 @@ io.on(
 
 
         /*
-          If database save failed,
-          don't broadcast the message.
+          Database save failed.
         */
 
         if (!savedMessage) {
@@ -484,9 +502,11 @@ io.on(
             "❌ Message was not saved."
           );
 
+
           socket.emit(
             "message save failed"
           );
+
 
           return;
 
@@ -494,13 +514,14 @@ io.on(
 
 
         /*
-          Broadcast saved message
-          to both users.
+          Send saved message
+          to all connected users.
         */
 
         io.emit(
           "chat message",
           {
+
             id:
               savedMessage.id,
 
@@ -537,6 +558,10 @@ io.on(
         );
 
 
+        /*
+          Delete all rows from Supabase.
+        */
+
         const success =
           await clearMessages();
 
@@ -544,8 +569,8 @@ io.on(
         if (success) {
 
           /*
-            Tell every connected browser
-            to clear its screen.
+            Tell ALL connected users
+            that the history was cleared.
           */
 
           io.emit(
@@ -553,18 +578,23 @@ io.on(
           );
 
 
+          console.log(
+            "✅ Chat history cleared successfully"
+          );
+
         } else {
 
           /*
-            Tell requester that the
-            database deletion failed.
+            Database deletion failed.
           */
 
           socket.emit(
             "history clear failed",
             {
+
               message:
-                "Could not clear chat history from Supabase."
+                "Could not delete chat history from Supabase."
+
             }
           );
 
@@ -637,12 +667,14 @@ io.on(
         ).emit(
           "incoming-call",
           {
+
             from:
               socket.username,
 
             offer,
 
             type
+
           }
         );
 
@@ -778,7 +810,7 @@ io.on(
 async function startServer() {
 
   /*
-    Test database first.
+    Test database connection.
   */
 
   await testDatabase();
@@ -786,7 +818,7 @@ async function startServer() {
 
   /*
     Render provides PORT.
-    Local computer uses 3000.
+    Local development uses 3000.
   */
 
   const PORT =
