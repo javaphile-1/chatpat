@@ -1,239 +1,488 @@
-
 <!DOCTYPE html>
 <html>
+
 <head>
+
 <title>Private Chat</title>
 
 <style>
 
-/* RESET */
+/* =========================================================
+   RESET
+========================================================= */
+
 body {
-  margin:0;
+
+  margin: 0;
+
   font-family: Arial, sans-serif;
-  background:#ece5dd;
+
+  background: #ece5dd;
+
 }
 
-/* LOGIN */
+
+/* =========================================================
+   LOGIN
+========================================================= */
+
 #loginScreen {
-  display:flex;
-  flex-direction:column;
-  justify-content:center;
-  align-items:center;
-  height:100vh;
+
+  display: flex;
+
+  flex-direction: column;
+
+  justify-content: center;
+
+  align-items: center;
+
+  height: 100vh;
+
 }
 
-/* CHAT CONTAINER */
+
+/* =========================================================
+   CHAT CONTAINER
+========================================================= */
+
 #chat {
-  display:none;
-  flex-direction:column;
-  height:100vh;
+
+  display: none;
+
+  flex-direction: column;
+
+  height: 100vh;
+
 }
 
-/* DESKTOP CENTER LAYOUT */
+
+/* =========================================================
+   DESKTOP CENTER LAYOUT
+========================================================= */
+
 @media (min-width: 768px) {
+
   #chat {
-    max-width:600px;
-    margin:auto;
-    border:1px solid #ccc;
-    height:95vh;
+
+    max-width: 600px;
+
+    margin: auto;
+
+    border: 1px solid #ccc;
+
+    height: 95vh;
+
   }
+
 }
 
-/* HEADER */
+
+/* =========================================================
+   HEADER
+========================================================= */
+
 #header {
-  background:#075e54;
-  color:white;
-  padding:16px;
-  font-size:18px;
-  display:flex;
-  justify-content:space-between;
+
+  background: #075e54;
+
+  color: white;
+
+  padding: 16px;
+
+  font-size: 18px;
+
+  display: flex;
+
+  justify-content: space-between;
+
 }
 
-/* CALL BAR */
+
+/* =========================================================
+   CALL BAR
+========================================================= */
+
 #callBar {
-  display:flex;
-  gap:10px;
-  padding:10px;
-  flex-wrap:wrap;
+
+  display: flex;
+
+  gap: 10px;
+
+  padding: 10px;
+
+  flex-wrap: wrap;
+
 }
 
-/* BUTTON */
+
+/* =========================================================
+   BUTTON
+========================================================= */
+
 button {
-  border:none;
-  border-radius:20px;
-  background:#25d366;
-  color:white;
-  cursor:pointer;
+
+  border: none;
+
+  border-radius: 20px;
+
+  background: #25d366;
+
+  color: white;
+
+  cursor: pointer;
+
 }
 
-/* DISABLED BUTTON */
+
+/* =========================================================
+   DISABLED BUTTON
+========================================================= */
+
 button:disabled {
-  opacity:0.6;
-  cursor:not-allowed;
+
+  opacity: 0.6;
+
+  cursor: not-allowed;
+
 }
 
-/* MOBILE BUTTON SIZE */
+
+/* =========================================================
+   MOBILE BUTTON SIZE
+========================================================= */
+
 button {
-  font-size:18px;
-  padding:12px 16px;
+
+  font-size: 18px;
+
+  padding: 12px 16px;
+
 }
 
-/* DESKTOP BUTTON SIZE */
-@media (min-width:768px){
+
+/* =========================================================
+   DESKTOP BUTTON SIZE
+========================================================= */
+
+@media (min-width: 768px) {
+
   button {
-    font-size:14px;
-    padding:8px 12px;
+
+    font-size: 14px;
+
+    padding: 8px 12px;
+
   }
+
 }
 
-/* RESET JSONBIN BUTTON */
+
+/* =========================================================
+   CLEAR CHAT BUTTON
+========================================================= */
+
 #resetJsonBinBtn {
-  background:#d32f2f;
+
+  background: #d32f2f;
+
 }
 
-/* MESSAGES */
+
+/* =========================================================
+   MESSAGES
+========================================================= */
+
 #messages {
-  flex:1;
-  overflow-y:auto;
-  padding:10px;
+
+  flex: 1;
+
+  overflow-y: auto;
+
+  padding: 10px;
+
 }
 
-/* INPUT AREA */
+
+/* =========================================================
+   INPUT AREA
+========================================================= */
+
 #inputArea {
-  display:flex;
-  padding:10px;
-  background:white;
+
+  display: flex;
+
+  padding: 10px;
+
+  background: white;
+
 }
+
 
 #messageInput {
-  flex:1;
-  border-radius:20px;
-  border:1px solid #ccc;
+
+  flex: 1;
+
+  border-radius: 20px;
+
+  border: 1px solid #ccc;
+
 }
 
-/* MOBILE INPUT */
+
+/* =========================================================
+   MOBILE INPUT
+========================================================= */
+
 #messageInput {
-  padding:14px;
-  font-size:18px;
+
+  padding: 14px;
+
+  font-size: 18px;
+
 }
 
-/* DESKTOP INPUT */
-@media (min-width:768px){
+
+/* =========================================================
+   DESKTOP INPUT
+========================================================= */
+
+@media (min-width: 768px) {
+
   #messageInput {
-    padding:10px;
-    font-size:14px;
+
+    padding: 10px;
+
+    font-size: 14px;
+
   }
+
 }
 
-/* VIDEO FULLSCREEN */
+
+/* =========================================================
+   VIDEO FULLSCREEN
+========================================================= */
+
 #videoScreen {
-  display:none;
-  position:fixed;
-  top:0;
-  left:0;
-  width:100%;
-  height:100%;
-  background:black;
-  z-index:100;
+
+  display: none;
+
+  position: fixed;
+
+  top: 0;
+
+  left: 0;
+
+  width: 100%;
+
+  height: 100%;
+
+  background: black;
+
+  z-index: 100;
+
 }
 
-/* REMOTE VIDEO */
+
+/* =========================================================
+   REMOTE VIDEO
+========================================================= */
+
 #remoteVideo {
-  width:100%;
-  height:100%;
-  object-fit:cover;
+
+  width: 100%;
+
+  height: 100%;
+
+  object-fit: cover;
+
 }
 
-/* LOCAL VIDEO */
+
+/* =========================================================
+   LOCAL VIDEO
+========================================================= */
+
 #localVideo {
-  position:absolute;
-  bottom:100px;
-  right:10px;
-  border:2px solid white;
+
+  position: absolute;
+
+  bottom: 100px;
+
+  right: 10px;
+
+  border: 2px solid white;
+
 }
 
-/* MOBILE VIDEO SIZE */
+
+/* =========================================================
+   MOBILE VIDEO SIZE
+========================================================= */
+
 #localVideo {
-  width:140px;
-  height:180px;
+
+  width: 140px;
+
+  height: 180px;
+
 }
 
-/* DESKTOP VIDEO SIZE */
-@media (min-width:768px){
+
+/* =========================================================
+   DESKTOP VIDEO SIZE
+========================================================= */
+
+@media (min-width: 768px) {
+
   #localVideo {
-    width:180px;
-    height:220px;
+
+    width: 180px;
+
+    height: 220px;
+
   }
+
 }
 
-/* INCOMING CALL POPUP */
+
+/* =========================================================
+   INCOMING CALL POPUP
+========================================================= */
+
 #incomingCall {
-  display:none;
-  position:fixed;
-  top:40%;
-  left:50%;
-  transform:translate(-50%,-50%);
-  background:white;
-  padding:20px;
-  border-radius:10px;
-  text-align:center;
-  z-index:200;
+
+  display: none;
+
+  position: fixed;
+
+  top: 40%;
+
+  left: 50%;
+
+  transform: translate(-50%, -50%);
+
+  background: white;
+
+  padding: 20px;
+
+  border-radius: 10px;
+
+  text-align: center;
+
+  z-index: 200;
+
 }
 
-/* MOBILE POPUP */
+
+/* =========================================================
+   MOBILE POPUP
+========================================================= */
+
 #incomingCall {
-  width:80%;
-  font-size:18px;
+
+  width: 80%;
+
+  font-size: 18px;
+
 }
 
-/* DESKTOP POPUP */
-@media (min-width:768px){
+
+/* =========================================================
+   DESKTOP POPUP
+========================================================= */
+
+@media (min-width: 768px) {
+
   #incomingCall {
-    width:300px;
-    font-size:14px;
+
+    width: 300px;
+
+    font-size: 14px;
+
   }
+
 }
 
-/* CALL CONTROLS */
+
+/* =========================================================
+   CALL CONTROLS
+========================================================= */
+
 #callControls {
-  position:absolute;
-  bottom:20px;
-  width:100%;
-  display:flex;
-  justify-content:center;
-  gap:20px;
+
+  position: absolute;
+
+  bottom: 20px;
+
+  width: 100%;
+
+  display: flex;
+
+  justify-content: center;
+
+  gap: 20px;
+
 }
 
-/* BUTTON STYLE */
+
+/* =========================================================
+   CONTROL BUTTON
+========================================================= */
+
 .controlBtn {
-  background:rgba(255,255,255,0.2);
-  border:none;
-  border-radius:50%;
-  padding:15px;
-  font-size:20px;
-  color:white;
+
+  background: rgba(255,255,255,0.2);
+
+  border: none;
+
+  border-radius: 50%;
+
+  padding: 15px;
+
+  font-size: 20px;
+
+  color: white;
+
 }
 
-/* END CALL BUTTON */
+
+/* =========================================================
+   END CALL BUTTON
+========================================================= */
+
 .endBtn {
-  background:red;
-  border:none;
-  border-radius:50%;
-  padding:18px;
-  font-size:22px;
-  color:white;
+
+  background: red;
+
+  border: none;
+
+  border-radius: 50%;
+
+  padding: 18px;
+
+  font-size: 22px;
+
+  color: white;
+
 }
 
 </style>
 
 </head>
 
+
 <body>
 
-<!-- LOGIN -->
+
+<!-- =======================================================
+     LOGIN
+======================================================== -->
+
 <div id="loginScreen">
 
   <h2>Enter</h2>
+
 
   <input
     id="codeInput"
@@ -242,41 +491,82 @@ button {
     autocomplete="off"
   >
 
-  <br><br>
 
-  <button id="loginBtn">Enter</button>
+  <br>
+
+  <br>
+
+
+  <button id="loginBtn">
+    Enter
+  </button>
 
 </div>
 
 
-<!-- CHAT -->
+
+<!-- =======================================================
+     CHAT
+======================================================== -->
+
 <div id="chat">
 
+
+  <!-- HEADER -->
+
   <div id="header">
+
     <span id="username"></span>
+
     <span id="status"></span>
+
   </div>
 
+
+
+  <!-- CALL BAR -->
 
   <div id="callBar">
 
+
     <button onclick="startCall('audio')">
+
       📞 Voice
+
     </button>
+
 
     <button onclick="startCall('video')">
-      🎥 Video
-    </button>
- <button onclick="clearChat()">🗑️ Clear</button>
 
-    
-    
+      🎥 Video
+
+    </button>
+
+
+    <!-- CLEAR CHAT -->
+
+    <button
+      id="clearChatBtn"
+      onclick="clearChat()"
+      style="background:#d32f2f;"
+    >
+
+      🗑️ Clear
+
+    </button>
+
 
   </div>
 
 
+
+  <!-- MESSAGES -->
+
   <div id="messages"></div>
 
+
+
+  <!-- TYPING -->
 
   <div
     id="typingIndicator"
@@ -284,132 +574,211 @@ button {
       padding-left:10px;
       font-size:12px;
       color:gray;
-      height:20px;">
+      height:20px;"
+  >
+
   </div>
 
 
+
+  <!-- INPUT -->
+
   <div id="inputArea">
+
 
     <input
       id="messageInput"
       placeholder="Type message"
     >
 
-    <button onclick="startVoiceTyping()">
+
+    <button
+      onclick="startVoiceTyping()"
+    >
+
       🎤
+
     </button>
 
-    <button onclick="sendMessage()">
+
+    <button
+      onclick="sendMessage()"
+    >
+
       Send
+
     </button>
+
 
   </div>
 
+
 </div>
 
 
-<!-- INCOMING CALL -->
+
+<!-- =======================================================
+     INCOMING CALL
+======================================================== -->
+
 <div id="incomingCall">
+
 
   <p id="callerText"></p>
 
+
   <button onclick="acceptCall()">
+
     Accept
+
   </button>
 
+
   <button onclick="rejectCall()">
+
     Reject
+
   </button>
+
 
 </div>
 
 
-<!-- VIDEO -->
+
+<!-- =======================================================
+     VIDEO
+======================================================== -->
+
 <div id="videoScreen">
+
 
   <video
     id="remoteVideo"
     autoplay
-    playsinline>
+    playsinline
+  >
   </video>
+
 
   <video
     id="localVideo"
     autoplay
     muted
-    playsinline>
+    playsinline
+  >
   </video>
 
 
   <div id="callControls">
 
-    <button
-      class="controlBtn"
-      onclick="toggleMute()">
-      🔇
-    </button>
 
     <button
       class="controlBtn"
-      onclick="toggleCamera()">
-      🎥
+      onclick="toggleMute()"
+    >
+
+      🔇
+
     </button>
+
+
+    <button
+      class="controlBtn"
+      onclick="toggleCamera()"
+    >
+
+      🎥
+
+    </button>
+
 
     <button
       class="endBtn"
-      onclick="endCall()">
+      onclick="endCall()"
+    >
+
       🔴
+
     </button>
+
 
   </div>
 
 </div>
 
+
+
+<!-- =======================================================
+     SOCKET.IO
+======================================================== -->
 
 <script src="/socket.io/socket.io.js"></script>
 
 
 <script>
 
+/* =========================================================
+   LOGIN CODES
+========================================================= */
+
 const SECRET_CODES = {
+
   "2213": "User 1",
+
   "1323": "User 2"
+
 };
 
+
 let socket;
+
 let username;
-let peer, localStream;
+
+let peer;
+
+let localStream;
+
 let callType;
+
 let incomingOffer;
+
 let currentUser = null;
+
 let otherUser = null;
 
-let remoteStream = new MediaStream();
+let remoteStream =
+  new MediaStream();
 
 
 /* =========================================================
    LOGIN
 ========================================================= */
 
-function login(){
+function login() {
+
 
   const code =
-    document.getElementById("codeInput")
+    document
+      .getElementById("codeInput")
       .value
       .trim();
 
 
-  if(code === "2213"){
+  if (code === "2213") {
 
     username = "User 1";
 
   }
-  else if(code === "1323"){
+
+  else if (code === "1323") {
 
     username = "User 2";
 
   }
-  else{
+
+  else {
+
+    alert("Invalid code.");
 
     return;
 
@@ -419,33 +788,37 @@ function login(){
   socket = io();
 
 
-  document.getElementById("loginScreen")
+  document
+    .getElementById("loginScreen")
     .style.display = "none";
 
 
-  document.getElementById("chat")
+  document
+    .getElementById("chat")
     .style.display = "flex";
 
 
-  document.getElementById("username")
+  document
+    .getElementById("username")
     .innerText = username;
 
 
   /*
-    Register listeners FIRST.
+    Register listeners BEFORE joining.
   */
 
   initSocketEvents();
 
 
   /*
-    Then join.
+    Join server.
   */
 
   socket.emit(
     "user joined",
     username
   );
+
 }
 
 
@@ -453,54 +826,73 @@ function login(){
    SOCKET EVENTS
 ========================================================= */
 
-function initSocketEvents(){
+function initSocketEvents() {
 
 
   /* =======================================================
      TYPING
   ======================================================= */
 
-  socket.on("typing", (user) => {
-
-    document.getElementById(
-      "typingIndicator"
-    ).innerText =
-      user + " is typing...";
+  socket.on(
+    "typing",
+    (user) => {
 
 
-    clearTimeout(
-      window.typingTimer
-    );
-
-
-    window.typingTimer =
-      setTimeout(() => {
-
-        document.getElementById(
+      document
+        .getElementById(
           "typingIndicator"
-        ).innerText = "";
+        )
+        .innerText =
+          user + " is typing...";
 
-      }, 1500);
 
-  });
+      clearTimeout(
+        window.typingTimer
+      );
+
+
+      window.typingTimer =
+        setTimeout(
+          () => {
+
+            document
+              .getElementById(
+                "typingIndicator"
+              )
+              .innerText = "";
+
+          },
+          1500
+        );
+
+    }
+  );
 
 
   /* =======================================================
      CHAT HISTORY
   ======================================================= */
 
-  socket.on("chat history", (msgs) => {
-
-    document.getElementById(
-      "messages"
-    ).innerHTML = "";
+  socket.on(
+    "chat history",
+    (msgs) => {
 
 
-    msgs.forEach(
-      msg => addMessage(msg)
-    );
+      const messages =
+        document.getElementById(
+          "messages"
+        );
 
-  });
+
+      messages.innerHTML = "";
+
+
+      msgs.forEach(
+        msg => addMessage(msg)
+      );
+
+    }
+  );
 
 
   /* =======================================================
@@ -509,13 +901,31 @@ function initSocketEvents(){
 
   socket.on(
     "chat message",
-    msg => {
+    (msg) => {
+
 
       addMessage(msg);
+
 
       socket.emit(
         "message seen",
         msg.id
+      );
+
+    }
+  );
+
+
+  /* =======================================================
+     MESSAGE SAVE FAILED
+  ======================================================= */
+
+  socket.on(
+    "message save failed",
+    () => {
+
+      alert(
+        "❌ Message could not be saved."
       );
 
     }
@@ -528,17 +938,19 @@ function initSocketEvents(){
 
   socket.on(
     "message seen",
-    id => {
+    (id) => {
 
-      let el =
+
+      const el =
         document.getElementById(
           "tick-" + id
         );
 
 
-      if(el) {
+      if (el) {
 
-        el.innerText = "✔✔";
+        el.innerText =
+          "✔✔";
 
       }
 
@@ -552,7 +964,8 @@ function initSocketEvents(){
 
   socket.on(
     "online users",
-    users => {
+    (users) => {
+
 
       otherUser =
         users.find(
@@ -560,12 +973,12 @@ function initSocketEvents(){
         );
 
 
-      document.getElementById(
-        "status"
-      ).innerText =
-        otherUser
-          ? otherUser + " ● Online"
-          : "Offline";
+      document
+        .getElementById("status")
+        .innerText =
+          otherUser
+            ? otherUser + " ● Online"
+            : "Offline";
 
     }
   );
@@ -577,24 +990,35 @@ function initSocketEvents(){
 
   socket.on(
     "incoming-call",
-    data => {
-
-      currentUser = data.from;
-
-      callType = data.type;
-
-      incomingOffer = data.offer;
+    (data) => {
 
 
-      document.getElementById(
-        "callerText"
-      ).innerText =
-        data.from + " calling";
+      currentUser =
+        data.from;
 
 
-      document.getElementById(
-        "incomingCall"
-      ).style.display = "block";
+      callType =
+        data.type;
+
+
+      incomingOffer =
+        data.offer;
+
+
+      document
+        .getElementById(
+          "callerText"
+        )
+        .innerText =
+          data.from + " calling";
+
+
+      document
+        .getElementById(
+          "incomingCall"
+        )
+        .style.display =
+          "block";
 
     }
   );
@@ -606,9 +1030,10 @@ function initSocketEvents(){
 
   socket.on(
     "call-answered",
-    async answer => {
+    async (answer) => {
 
-      if(!peer){
+
+      if (!peer) {
 
         console.error(
           "Peer not ready"
@@ -620,7 +1045,9 @@ function initSocketEvents(){
 
 
       await peer.setRemoteDescription(
-        new RTCSessionDescription(answer)
+        new RTCSessionDescription(
+          answer
+        )
       );
 
     }
@@ -663,9 +1090,14 @@ function initSocketEvents(){
 
   socket.on(
     "ice-candidate",
-    async candidate => {
+    async (candidate) => {
 
-      if(!peer) return;
+
+      if (!peer) {
+
+        return;
+
+      }
 
 
       try {
@@ -674,7 +1106,9 @@ function initSocketEvents(){
           candidate
         );
 
-      } catch(err) {
+      }
+
+      catch (err) {
 
         console.error(
           "ICE Candidate Error:",
@@ -695,30 +1129,25 @@ function initSocketEvents(){
     "history cleared",
     () => {
 
-      document.getElementById(
-        "messages"
-      ).innerHTML = "";
 
+      /*
+        IMPORTANT:
 
-      const button =
-        document.getElementById(
-          "resetJsonBinBtn"
-        );
+        The server has successfully
+        deleted the data from Supabase.
 
+        Now clear the browser.
+      */
 
-      if(button){
-
-        button.disabled = false;
-
-        button.innerText =
-          "🔄 Reset JSONBin";
-
-      }
+      document
+        .getElementById(
+          "messages"
+        )
+        .innerHTML = "";
 
 
       alert(
-        "✅ JSONBin reset successfully.\n\n" +
-        "Chat history is now empty."
+        "✅ All chat history deleted."
       );
 
     }
@@ -731,29 +1160,14 @@ function initSocketEvents(){
 
   socket.on(
     "history clear failed",
-    data => {
-
-      const button =
-        document.getElementById(
-          "resetJsonBinBtn"
-        );
-
-
-      if(button){
-
-        button.disabled = false;
-
-        button.innerText =
-          "🔄 Reset JSONBin";
-
-      }
+    (data) => {
 
 
       alert(
-        "❌ JSONBin reset failed.\n\n" +
+        "❌ Could not delete chat history.\n\n" +
         (
           data?.message ||
-          "Existing history was preserved."
+          "Database deletion failed."
         )
       );
 
@@ -764,28 +1178,55 @@ function initSocketEvents(){
 
 
 /* =========================================================
-   CHAT
+   SEND MESSAGE
 ========================================================= */
 
-function sendMessage(){
-
-  let text =
-    messageInput.value.trim();
+function sendMessage() {
 
 
-  if(!text) return;
+  const input =
+    document.getElementById(
+      "messageInput"
+    );
+
+
+  const text =
+    input.value.trim();
+
+
+  if (!text) {
+
+    return;
+
+  }
+
+
+  if (!socket) {
+
+    alert(
+      "Not connected to server."
+    );
+
+    return;
+
+  }
 
 
   socket.emit(
     "chat message",
     {
-      user: username,
-      text
+
+      user:
+        username,
+
+      text:
+        text
+
     }
   );
 
 
-  messageInput.value = "";
+  input.value = "";
 
 }
 
@@ -794,65 +1235,90 @@ function sendMessage(){
    TYPING
 ========================================================= */
 
-messageInput.addEventListener(
-  "input",
-  () => {
-
-    if(socket){
-
-      socket.emit(
-        "typing",
-        username
-      );
-
-    }
-
-  }
-);
+document
+  .getElementById(
+    "messageInput"
+  )
+  .addEventListener(
+    "input",
+    () => {
 
 
-messageInput.addEventListener(
-  "keypress",
-  e => {
+      if (socket) {
 
-    if(e.key === "Enter"){
+        socket.emit(
+          "typing",
+          username
+        );
 
-      sendMessage();
+      }
 
     }
+  );
 
-  }
-);
+
+document
+  .getElementById(
+    "messageInput"
+  )
+  .addEventListener(
+    "keypress",
+    (e) => {
+
+
+      if (e.key === "Enter") {
+
+        sendMessage();
+
+      }
+
+    }
+  );
 
 
 /* =========================================================
    ADD MESSAGE
 ========================================================= */
 
-function addMessage(msg){
-
-  let div =
-    document.createElement("div");
+function addMessage(msg) {
 
 
-  div.style.padding = "10px";
-
-  div.style.margin = "5px";
-
-  div.style.borderRadius = "10px";
-
-  div.style.maxWidth = "70%";
+  const div =
+    document.createElement(
+      "div"
+    );
 
 
-  if(msg.user === username){
+  div.style.padding =
+    "10px";
+
+
+  div.style.margin =
+    "5px";
+
+
+  div.style.borderRadius =
+    "10px";
+
+
+  div.style.maxWidth =
+    "70%";
+
+
+  if (
+    msg.user === username
+  ) {
+
 
     div.style.background =
       "#dcf8c6";
+
 
     div.style.marginLeft =
       "auto";
 
   }
+
   else {
 
     div.style.background =
@@ -861,29 +1327,98 @@ function addMessage(msg){
   }
 
 
-  let time =
+  const time =
     new Date(
       msg.time
     ).toLocaleString();
 
 
-  div.innerHTML = `
-    ${msg.text}
+  /*
+    Use textContent instead of
+    directly inserting message text
+    into innerHTML.
 
-    <div
-      style="
-        font-size:12px;
-        color:gray;
-        text-align:right;">
-      ${time}
-      <span id="tick-${msg.id}">
-        ${msg.user === username ? "✔" : ""}
-      </span>
-    </div>
-  `;
+    This prevents HTML injection.
+  */
+
+  const messageText =
+    document.createElement(
+      "div"
+    );
 
 
-  messages.appendChild(div);
+  messageText.textContent =
+    msg.text;
+
+
+  div.appendChild(
+    messageText
+  );
+
+
+  const info =
+    document.createElement(
+      "div"
+    );
+
+
+  info.style.fontSize =
+    "12px";
+
+
+  info.style.color =
+    "gray";
+
+
+  info.style.textAlign =
+    "right";
+
+
+  info.innerText =
+    time;
+
+
+  if (
+    msg.user === username
+  ) {
+
+
+    const tick =
+      document.createElement(
+        "span"
+      );
+
+
+    tick.id =
+      "tick-" + msg.id;
+
+
+    tick.innerText =
+      "✔";
+
+
+    info.appendChild(
+      tick
+    );
+
+  }
+
+
+  div.appendChild(
+    info
+  );
+
+
+  const messages =
+    document.getElementById(
+      "messages"
+    );
+
+
+  messages.appendChild(
+    div
+  );
+
 
   messages.scrollTop =
     messages.scrollHeight;
@@ -892,12 +1427,13 @@ function addMessage(msg){
 
 
 /* =========================================================
-   RESET JSONBIN
+   CLEAR CHAT
 ========================================================= */
 
-function resetJsonBin(){
+function clearChat() {
 
-  if(!socket){
+
+  if (!socket) {
 
     alert(
       "❌ Not connected to server."
@@ -910,39 +1446,62 @@ function resetJsonBin(){
 
   const confirmed =
     confirm(
-      "⚠️ RESET JSONBIN?\n\n" +
-      "This will permanently delete ALL chat messages.\n\n" +
-      "JSONBin will be reset to an empty array [].\n\n" +
+      "⚠️ DELETE ALL CHAT HISTORY?\n\n" +
+      "This will permanently delete all messages " +
+      "from the database.\n\n" +
       "Continue?"
     );
 
 
-  if(!confirmed) return;
+  if (!confirmed) {
+
+    return;
+
+  }
 
 
   const button =
     document.getElementById(
-      "resetJsonBinBtn"
+      "clearChatBtn"
     );
 
 
-  button.disabled = true;
+  /*
+    Disable button while server
+    is deleting database records.
+  */
+
+  button.disabled =
+    true;
+
 
   button.innerText =
-    "⏳ Resetting...";
+    "⏳ Clearing...";
 
-
-  /*
-    Server will clear JSONBin.
-
-    The browser is NOT cleared here.
-
-    It will only be cleared after the server confirms
-    that JSONBin was successfully reset.
-  */
 
   socket.emit(
     "clear history"
+  );
+
+
+  /*
+    Re-enable after a short period.
+
+    The actual screen clearing is handled
+    by the "history cleared" event.
+  */
+
+  setTimeout(
+    () => {
+
+      button.disabled =
+        false;
+
+      button.innerText =
+        "🗑️ Clear";
+
+    },
+    2000
   );
 
 }
@@ -952,9 +1511,10 @@ function resetJsonBin(){
    CALL
 ========================================================= */
 
-async function startCall(type){
+async function startCall(type) {
 
-  if(!otherUser){
+
+  if (!otherUser) {
 
     alert(
       "Other user not online"
@@ -968,27 +1528,37 @@ async function startCall(type){
   currentUser =
     otherUser;
 
+
   callType =
     type;
 
 
-  if(type === "video"){
+  if (type === "video") {
 
     localStream =
-      await navigator.mediaDevices
+      await navigator
+        .mediaDevices
         .getUserMedia({
+
           video: true,
+
           audio: true
+
         });
 
   }
+
   else {
 
     localStream =
-      await navigator.mediaDevices
+      await navigator
+        .mediaDevices
         .getUserMedia({
+
           video: false,
+
           audio: true
+
         });
 
   }
@@ -1004,14 +1574,15 @@ async function startCall(type){
   localStream
     .getTracks()
     .forEach(
-      t => peer.addTrack(
-        t,
-        localStream
-      )
+      track =>
+        peer.addTrack(
+          track,
+          localStream
+        )
     );
 
 
-  let offer =
+  const offer =
     await peer.createOffer();
 
 
@@ -1023,9 +1594,14 @@ async function startCall(type){
   socket.emit(
     "call-user",
     {
-      to: currentUser,
+
+      to:
+        currentUser,
+
       offer,
+
       type
+
     }
   );
 
@@ -1039,44 +1615,51 @@ async function startCall(type){
    ACCEPT CALL
 ========================================================= */
 
-async function acceptCall(){
-
-  console.log(
-    "1. acceptCall triggered"
-  );
+async function acceptCall() {
 
 
-  document.getElementById(
-    "incomingCall"
-  ).style.display = "none";
+  document
+    .getElementById(
+      "incomingCall"
+    )
+    .style.display =
+      "none";
 
 
   try {
 
-    if(callType === "video"){
+
+    if (
+      callType === "video"
+    ) {
+
 
       localStream =
-        await navigator.mediaDevices
+        await navigator
+          .mediaDevices
           .getUserMedia({
+
             video: true,
+
             audio: true
+
           });
 
     }
+
     else {
 
+
       localStream =
-        await navigator.mediaDevices
+        await navigator
+          .mediaDevices
           .getUserMedia({
+
             audio: true
+
           });
 
     }
-
-
-    console.log(
-      "2. got media"
-    );
 
 
     remoteStream =
@@ -1086,18 +1669,14 @@ async function acceptCall(){
     await createPeer();
 
 
-    console.log(
-      "3. peer created"
-    );
-
-
     localStream
       .getTracks()
       .forEach(
-        t => peer.addTrack(
-          t,
-          localStream
-        )
+        track =>
+          peer.addTrack(
+            track,
+            localStream
+          )
       );
 
 
@@ -1108,7 +1687,7 @@ async function acceptCall(){
     );
 
 
-    let answer =
+    const answer =
       await peer.createAnswer();
 
 
@@ -1120,21 +1699,23 @@ async function acceptCall(){
     socket.emit(
       "call-accepted",
       {
-        to: currentUser,
-        answer: answer
+
+        to:
+          currentUser,
+
+        answer:
+          answer
+
       }
-    );
-
-
-    console.log(
-      "4. answer sent"
     );
 
 
     showVideo();
 
 
-  } catch(err) {
+  }
+
+  catch (err) {
 
     console.error(
       "ACCEPT CALL ERROR:",
@@ -1150,17 +1731,24 @@ async function acceptCall(){
    REJECT CALL
 ========================================================= */
 
-function rejectCall(){
+function rejectCall() {
 
-  document.getElementById(
-    "incomingCall"
-  ).style.display = "none";
+
+  document
+    .getElementById(
+      "incomingCall"
+    )
+    .style.display =
+      "none";
 
 
   socket.emit(
     "call-rejected",
     {
-      to: currentUser
+
+      to:
+        currentUser
+
     }
   );
 
@@ -1171,12 +1759,14 @@ function rejectCall(){
    CREATE PEER
 ========================================================= */
 
-async function createPeer(){
+async function createPeer() {
+
 
   let iceServers;
 
 
   try {
+
 
     const response =
       await fetch(
@@ -1194,7 +1784,10 @@ async function createPeer(){
     );
 
 
-  } catch(err) {
+  }
+
+  catch (err) {
+
 
     console.error(
       "Failed to fetch ICE servers, using fallback:",
@@ -1218,6 +1811,7 @@ async function createPeer(){
 
         credential:
           "q3/1+5G7wUDnzmXx"
+
       },
 
       {
@@ -1229,6 +1823,7 @@ async function createPeer(){
 
         credential:
           "q3/1+5G7wUDnzmXx"
+
       },
 
       {
@@ -1240,6 +1835,7 @@ async function createPeer(){
 
         credential:
           "q3/1+5G7wUDnzmXx"
+
       },
 
       {
@@ -1251,6 +1847,7 @@ async function createPeer(){
 
         credential:
           "q3/1+5G7wUDnzmXx"
+
       }
 
     ];
@@ -1260,63 +1857,40 @@ async function createPeer(){
 
   peer =
     new RTCPeerConnection({
-      iceTransportPolicy: "all",
-      iceServers: iceServers
+
+      iceTransportPolicy:
+        "all",
+
+      iceServers:
+        iceServers
+
     });
-
-
-  setInterval(
-    async () => {
-
-      if(!peer) return;
-
-
-      const stats =
-        await peer.getStats();
-
-
-      stats.forEach(
-        report => {
-
-          if(
-            report.type ===
-              "candidate-pair" &&
-            report.state ===
-              "succeeded"
-          ){
-
-            console.log(
-              "Candidate Pair Type:",
-              report.localCandidateId,
-              report.remoteCandidateId
-            );
-
-          }
-
-        }
-      );
-
-    },
-    5000
-  );
 
 
   peer.onicecandidate =
     event => {
 
-      if(event.candidate){
 
-        console.log(
-          "ICE Candidate:",
-          event.candidate.candidate
-        );
+      if (
+        event.candidate
+      ) {
 
 
         const candidate =
           event.candidate.candidate;
 
 
-        if(candidate.includes("relay")){
+        console.log(
+          "ICE Candidate:",
+          candidate
+        );
+
+
+        if (
+          candidate.includes(
+            "relay"
+          )
+        ) {
 
           console.log(
             "✅ TURN Candidate Generated"
@@ -1325,7 +1899,11 @@ async function createPeer(){
         }
 
 
-        if(candidate.includes("srflx")){
+        if (
+          candidate.includes(
+            "srflx"
+          )
+        ) {
 
           console.log(
             "✅ STUN Candidate Generated"
@@ -1334,7 +1912,11 @@ async function createPeer(){
         }
 
 
-        if(candidate.includes("host")){
+        if (
+          candidate.includes(
+            "host"
+          )
+        ) {
 
           console.log(
             "✅ Local Candidate Generated"
@@ -1346,8 +1928,13 @@ async function createPeer(){
         socket.emit(
           "ice-candidate",
           {
-            to: currentUser,
-            candidate: event.candidate
+
+            to:
+              currentUser,
+
+            candidate:
+              event.candidate
+
           }
         );
 
@@ -1358,6 +1945,7 @@ async function createPeer(){
 
   peer.ontrack =
     event => {
+
 
       console.log(
         "Remote Track Received:",
@@ -1370,8 +1958,18 @@ async function createPeer(){
       );
 
 
-      remoteVideo.srcObject =
-        remoteStream;
+      document
+        .getElementById(
+          "remoteVideo"
+        )
+        .srcObject =
+          remoteStream;
+
+
+      const remoteVideo =
+        document.getElementById(
+          "remoteVideo"
+        );
 
 
       remoteVideo.muted =
@@ -1380,10 +1978,10 @@ async function createPeer(){
 
       remoteVideo.play()
         .catch(
-          function(err){
+          err => {
 
             console.log(
-              "Autoplay blocked, trying again:",
+              "Autoplay blocked:",
               err
             );
 
@@ -1396,6 +1994,7 @@ async function createPeer(){
   peer.oniceconnectionstatechange =
     () => {
 
+
       console.log(
         "ICE State:",
         peer.iceConnectionState
@@ -1407,6 +2006,7 @@ async function createPeer(){
   peer.onconnectionstatechange =
     () => {
 
+
       console.log(
         "Connection State:",
         peer.connectionState
@@ -1417,6 +2017,7 @@ async function createPeer(){
 
   peer.onsignalingstatechange =
     () => {
+
 
       console.log(
         "Signaling State:",
@@ -1432,23 +2033,40 @@ async function createPeer(){
    SHOW VIDEO
 ========================================================= */
 
-function showVideo(){
+function showVideo() {
 
-  videoScreen.style.display =
-    "block";
+
+  document
+    .getElementById(
+      "videoScreen"
+    )
+    .style.display =
+      "block";
+
+
+  const remoteVideo =
+    document.getElementById(
+      "remoteVideo"
+    );
 
 
   remoteVideo.muted =
     false;
 
+
   remoteVideo.volume =
     1.0;
 
 
-  if(localStream){
+  if (localStream) {
 
-    localVideo.srcObject =
-      localStream;
+
+    document
+      .getElementById(
+        "localVideo"
+      )
+      .srcObject =
+        localStream;
 
   }
 
@@ -1459,84 +2077,111 @@ function showVideo(){
    END CALL
 ========================================================= */
 
-function endCall(){
+function endCall() {
 
-  if(socket && currentUser){
+
+  if (
+    socket &&
+    currentUser
+  ) {
+
 
     socket.emit(
       "call-ended",
       {
-        to: currentUser
+
+        to:
+          currentUser
+
       }
     );
 
   }
 
 
-  if(peer){
+  if (peer) {
+
 
     peer.close();
 
-    peer = null;
+    peer =
+      null;
 
   }
 
 
-  if(localStream){
+  if (localStream) {
+
 
     localStream
       .getTracks()
       .forEach(
-        t => t.stop()
+        track =>
+          track.stop()
       );
 
-    localStream = null;
+
+    localStream =
+      null;
 
   }
 
 
-  remoteVideo.srcObject =
-    null;
+  document
+    .getElementById(
+      "remoteVideo"
+    )
+    .srcObject =
+      null;
 
-  localVideo.srcObject =
-    null;
+
+  document
+    .getElementById(
+      "localVideo"
+    )
+    .srcObject =
+      null;
 
 
-  videoScreen.style.display =
-    "none";
+  document
+    .getElementById(
+      "videoScreen"
+    )
+    .style.display =
+      "none";
 
-  chat.style.display =
-    "flex";
+
+  document
+    .getElementById(
+      "chat"
+    )
+    .style.display =
+      "flex";
 
 }
-
-
-/* =========================================================
-   LOGIN BUTTON
-========================================================= */
-
-document
-  .getElementById("loginBtn")
-  .addEventListener(
-    "click",
-    login
-  );
 
 
 /* =========================================================
    MUTE
 ========================================================= */
 
-function toggleMute(){
-
-  if(!localStream) return;
+function toggleMute() {
 
 
-  var audioTrack =
-    localStream.getAudioTracks()[0];
+  if (!localStream) {
+
+    return;
+
+  }
 
 
-  if(audioTrack){
+  const audioTrack =
+    localStream
+      .getAudioTracks()[0];
+
+
+  if (audioTrack) {
+
 
     audioTrack.enabled =
       !audioTrack.enabled;
@@ -1568,16 +2213,23 @@ function toggleMute(){
    CAMERA
 ========================================================= */
 
-function toggleCamera(){
-
-  if(!localStream) return;
+function toggleCamera() {
 
 
-  var videoTrack =
-    localStream.getVideoTracks()[0];
+  if (!localStream) {
+
+    return;
+
+  }
 
 
-  if(videoTrack){
+  const videoTrack =
+    localStream
+      .getVideoTracks()[0];
+
+
+  if (videoTrack) {
+
 
     videoTrack.enabled =
       !videoTrack.enabled;
@@ -1604,38 +2256,26 @@ function toggleCamera(){
 
 }
 
-  function clearChat() {
-
-  if (!socket) {
-    alert("❌ Not connected to server.");
-    return;
-  }
-
-  if (confirm("⚠️ Delete ALL chat history?")) {
-
-    socket.emit("clear history");
-
-  }
-
-}
-
 
 /* =========================================================
    VOICE TYPING
 ========================================================= */
 
-function startVoiceTyping(){
+function startVoiceTyping() {
+
 
   const SpeechRecognition =
     window.SpeechRecognition ||
     window.webkitSpeechRecognition;
 
 
-  if(!SpeechRecognition){
+  if (!SpeechRecognition) {
+
 
     alert(
       "Voice typing is not supported in this browser."
     );
+
 
     return;
 
@@ -1646,16 +2286,13 @@ function startVoiceTyping(){
     new SpeechRecognition();
 
 
-  /*
-    Keep your original Marathi setting.
-  */
-
   recognition.lang =
     "mr-IN";
 
 
   recognition.interimResults =
     true;
+
 
   recognition.continuous =
     false;
@@ -1674,17 +2311,25 @@ function startVoiceTyping(){
   recognition.onresult =
     event => {
 
-      let transcript = "";
+
+      let transcript =
+        "";
 
 
-      for(
-        let i = event.resultIndex;
-        i < event.results.length;
+      for (
+        let i =
+          event.resultIndex;
+
+        i <
+          event.results.length;
+
         i++
-      ){
+      ) {
+
 
         transcript +=
-          event.results[i][0].transcript;
+          event.results[i][0]
+            .transcript;
 
       }
 
@@ -1694,13 +2339,14 @@ function startVoiceTyping(){
           "messageInput"
         )
         .value =
-        transcript;
+          transcript;
 
     };
 
 
   recognition.onerror =
     event => {
+
 
       console.error(
         "Voice typing error:",
@@ -1724,8 +2370,46 @@ function startVoiceTyping(){
 
 }
 
+
+/* =========================================================
+   LOGIN BUTTON
+========================================================= */
+
+document
+  .getElementById(
+    "loginBtn"
+  )
+  .addEventListener(
+    "click",
+    login
+  );
+
+
+/* =========================================================
+   ENTER KEY LOGIN
+========================================================= */
+
+document
+  .getElementById(
+    "codeInput"
+  )
+  .addEventListener(
+    "keypress",
+    event => {
+
+      if (
+        event.key === "Enter"
+      ) {
+
+        login();
+
+      }
+
+    }
+  );
+
 </script>
 
 </body>
-</html>
 
+</html>
