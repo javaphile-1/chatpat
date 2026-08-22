@@ -1605,10 +1605,18 @@ function toggleCamera(){
 }
 
   function clearChat() {
-  if (confirm("Delete all chat history?")) {
-    socket.emit("clear history");
-    document.getElementById("messages").innerHTML = "";
+
+  if (!socket) {
+    alert("❌ Not connected to server.");
+    return;
   }
+
+  if (confirm("⚠️ Delete ALL chat history?")) {
+
+    socket.emit("clear history");
+
+  }
+
 }
 
 
